@@ -46,8 +46,37 @@ use crate::sys::{
 /// as H.264. We can reuse the H.264 splitter, but HEVC NAL headers are
 /// **two bytes** so callers should check the type via bits 1..7 of the
 /// first byte (`(byte0 >> 1) & 0x3f`).
+///
+/// (Round 5 note: the h264 module's local `split_nal_units` was deleted
+/// when its parsing path migrated to `oxideav-bitstream`. HEVC keeps an
+/// inline parser pending bitstream coverage of the full HEVC PPS, so we
+/// need our own splitter here too.)
 pub(crate) fn split_nal_units(buf: &[u8]) -> Vec<&[u8]> {
-    crate::h264::split_nal_units(buf)
+    let mut out = Vec::new();
+    let mut i = 0;
+    let n = buf.len();
+    let mut last_payload_start: Option<usize> = None;
+    while i < n {
+        let four = i + 3 < n
+            && buf[i] == 0
+            && buf[i + 1] == 0
+            && buf[i + 2] == 0
+            && buf[i + 3] == 1;
+        let three = !four && i + 2 < n && buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1;
+        if four || three {
+            if let Some(start) = last_payload_start.take() {
+                out.push(&buf[start..i]);
+            }
+            i += if four { 4 } else { 3 };
+            last_payload_start = Some(i);
+            continue;
+        }
+        i += 1;
+    }
+    if let Some(start) = last_payload_start.take() {
+        out.push(&buf[start..n]);
+    }
+    out
 }
 
 /// Strip emulation-prevention `0x03` bytes from an HEVC RBSP payload.

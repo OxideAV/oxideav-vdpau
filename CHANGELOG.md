@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Round 5
+
+- Migrated the H.264 SPS / PPS / slice-header parser to the new shared
+  `oxideav-bitstream` sibling crate. `src/h264.rs` is now just the
+  VDPAU-specific glue (`H264VdpauDecoder`, `DecodedFrame`,
+  `get_bits_nv12_as_i420`, `From<BitstreamError> for VdpError`) — the
+  Annex-B framer, RBSP emulation-prevention stripper, Exp-Golomb bit
+  reader, SPS / PPS / slice-header structs and `parse_*` functions all
+  moved to `oxideav_bitstream::h264`.
+- Added `oxideav-bitstream = "0.0"` as a Linux-only dependency. The
+  workspace `[patch.crates-io]` block redirects to
+  `crates/oxideav-bitstream/` for local builds.
+- HEVC + VP9 + MPEG-2 stay inline pending bitstream coverage of those
+  codecs. The HEVC migration is blocked on `oxideav-bitstream` not
+  carrying the full HEVC PPS — see the in-source note at the top of
+  `src/hevc.rs`'s splitter for details.
+
 ### Added — Round 2
 
 - `libX11.so.6` is now dlopened alongside `libvdpau.so.1`; the
