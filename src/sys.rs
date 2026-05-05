@@ -334,6 +334,182 @@ pub struct VdpPictureInfoH264 {
     pub reference_frames: [VdpReferenceFrameH264; 16],
 }
 
+// ─────────────────────────── HEVC picture info ───────────────────────────────
+
+/// Picture-parameter struct passed to `VdpDecoderRender` when the
+/// decoder profile is one of the HEVC profiles. Layout copied verbatim
+/// from `<vdpau/vdpau.h>` `VdpPictureInfoHEVC`.
+///
+/// The struct is large because it encodes most of HEVC's VPS+SPS+PPS
+/// parameters plus per-slice RPS state. For an IDR-only minimal decode
+/// most of the fields can be zero, but the layout must match the
+/// vendor header byte-for-byte.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VdpPictureInfoHEVC {
+    // Sequence Parameter Set
+    pub chroma_format_idc: u8,
+    pub separate_colour_plane_flag: u8,
+    pub pic_width_in_luma_samples: u32,
+    pub pic_height_in_luma_samples: u32,
+    pub bit_depth_luma_minus8: u8,
+    pub bit_depth_chroma_minus8: u8,
+    pub log2_max_pic_order_cnt_lsb_minus4: u8,
+    pub sps_max_dec_pic_buffering_minus1: u8,
+    pub log2_min_luma_coding_block_size_minus3: u8,
+    pub log2_diff_max_min_luma_coding_block_size: u8,
+    pub log2_min_transform_block_size_minus2: u8,
+    pub log2_diff_max_min_transform_block_size: u8,
+    pub max_transform_hierarchy_depth_inter: u8,
+    pub max_transform_hierarchy_depth_intra: u8,
+    pub scaling_list_enabled_flag: u8,
+    pub scaling_list_4x4: [[u8; 16]; 6],
+    pub scaling_list_8x8: [[u8; 64]; 6],
+    pub scaling_list_16x16: [[u8; 64]; 6],
+    pub scaling_list_32x32: [[u8; 64]; 2],
+    pub scaling_list_dc_coeff_16x16: [u8; 6],
+    pub scaling_list_dc_coeff_32x32: [u8; 2],
+    pub amp_enabled_flag: u8,
+    pub sample_adaptive_offset_enabled_flag: u8,
+    pub pcm_enabled_flag: u8,
+    pub pcm_sample_bit_depth_luma_minus1: u8,
+    pub pcm_sample_bit_depth_chroma_minus1: u8,
+    pub log2_min_pcm_luma_coding_block_size_minus3: u8,
+    pub log2_diff_max_min_pcm_luma_coding_block_size: u8,
+    pub pcm_loop_filter_disabled_flag: u8,
+    pub num_short_term_ref_pic_sets: u8,
+    pub long_term_ref_pics_present_flag: u8,
+    pub num_long_term_ref_pics_sps: u8,
+    pub sps_temporal_mvp_enabled_flag: u8,
+    pub strong_intra_smoothing_enabled_flag: u8,
+
+    // Picture Parameter Set
+    pub dependent_slice_segments_enabled_flag: u8,
+    pub output_flag_present_flag: u8,
+    pub num_extra_slice_header_bits: u8,
+    pub sign_data_hiding_enabled_flag: u8,
+    pub cabac_init_present_flag: u8,
+    pub num_ref_idx_l0_default_active_minus1: u8,
+    pub num_ref_idx_l1_default_active_minus1: u8,
+    pub init_qp_minus26: i8,
+    pub constrained_intra_pred_flag: u8,
+    pub transform_skip_enabled_flag: u8,
+    pub cu_qp_delta_enabled_flag: u8,
+    pub diff_cu_qp_delta_depth: u8,
+    pub pps_cb_qp_offset: i8,
+    pub pps_cr_qp_offset: i8,
+    pub pps_slice_chroma_qp_offsets_present_flag: u8,
+    pub weighted_pred_flag: u8,
+    pub weighted_bipred_flag: u8,
+    pub transquant_bypass_enabled_flag: u8,
+    pub tiles_enabled_flag: u8,
+    pub entropy_coding_sync_enabled_flag: u8,
+    pub num_tile_columns_minus1: u8,
+    pub num_tile_rows_minus1: u8,
+    pub uniform_spacing_flag: u8,
+    pub column_width_minus1: [u16; 20],
+    pub row_height_minus1: [u16; 22],
+    pub loop_filter_across_tiles_enabled_flag: u8,
+    pub pps_loop_filter_across_slices_enabled_flag: u8,
+    pub deblocking_filter_control_present_flag: u8,
+    pub deblocking_filter_override_enabled_flag: u8,
+    pub pps_deblocking_filter_disabled_flag: u8,
+    pub pps_beta_offset_div2: i8,
+    pub pps_tc_offset_div2: i8,
+    pub lists_modification_present_flag: u8,
+    pub log2_parallel_merge_level_minus2: u8,
+    pub slice_segment_header_extension_present_flag: u8,
+
+    // Slice Segment Header
+    pub idr_pic_flag: u8,
+    pub rap_pic_flag: u8,
+    pub curr_rps_idx: u8,
+    pub num_poc_total_curr: u32,
+    pub num_delta_pocs_of_ref_rps_idx: u32,
+    pub num_short_term_picture_slice_header_bits: u32,
+    pub num_long_term_picture_slice_header_bits: u32,
+
+    // Slice Decoding Process - Picture Order Count
+    pub curr_pic_order_cnt_val: i32,
+
+    // Slice Decoding Process - Reference Picture Sets
+    pub ref_pics: [VdpVideoSurface; 16],
+    pub pic_order_cnt_val: [i32; 16],
+    pub is_long_term: [u8; 16],
+    pub num_poc_st_curr_before: u8,
+    pub num_poc_st_curr_after: u8,
+    pub num_poc_lt_curr: u8,
+    pub ref_pic_set_st_curr_before: [u8; 8],
+    pub ref_pic_set_st_curr_after: [u8; 8],
+    pub ref_pic_set_lt_curr: [u8; 8],
+}
+
+// ─────────────────────────── VP9 picture info ────────────────────────────────
+
+/// Picture-parameter struct passed to `VdpDecoderRender` when the
+/// decoder profile is one of the VP9 profiles. Layout copied verbatim
+/// from `<vdpau/vdpau.h>` `VdpPictureInfoVP9`.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VdpPictureInfoVP9 {
+    pub width: u32,
+    pub height: u32,
+
+    // Frame Indices
+    pub last_reference: VdpVideoSurface,
+    pub golden_reference: VdpVideoSurface,
+    pub alt_reference: VdpVideoSurface,
+
+    pub color_space: u8,
+
+    pub profile: u16,
+    pub frame_context_idx: u16,
+    pub key_frame: u16,
+    pub show_frame: u16,
+    pub error_resilient: u16,
+    pub frame_parallel_decoding: u16,
+    pub sub_sampling_x: u16,
+    pub sub_sampling_y: u16,
+    pub intra_only: u16,
+    pub allow_high_precision_mv: u16,
+    pub refresh_entropy_probs: u16,
+
+    pub ref_frame_sign_bias: [u8; 4],
+
+    pub bit_depth_minus8_luma: u8,
+    pub bit_depth_minus8_chroma: u8,
+    pub loop_filter_level: u8,
+    pub loop_filter_sharpness: u8,
+
+    pub mode_ref_lf_enabled: u8,
+    pub log2_tile_columns: u8,
+    pub log2_tile_rows: u8,
+
+    pub segment_enabled: u8,
+    pub segment_map_update: u8,
+    pub segment_map_temporal_update: u8,
+    pub segment_feature_mode: u8,
+
+    pub segment_feature_enable: [[u8; 4]; 8],
+    pub segment_feature_data: [[i16; 4]; 8],
+    pub mb_segment_tree_probs: [u8; 7],
+    pub segment_pred_probs: [u8; 3],
+    pub reserved_segment_16_bits: [u8; 2],
+
+    pub qp_y_ac: i32,
+    pub qp_y_dc: i32,
+    pub qp_ch_dc: i32,
+    pub qp_ch_ac: i32,
+
+    pub active_ref_idx: [u32; 3],
+    pub reset_frame_context: u32,
+    pub mcomp_filter_type: u32,
+    pub mb_ref_lf_delta: [u32; 4],
+    pub mb_mode_lf_delta: [u32; 2],
+    pub uncompressed_header_size: u32,
+    pub compressed_header_size: u32,
+}
+
 // ─────────────────────────── X11 opaque types ────────────────────────────────
 
 /// `Display*` from libX11. Opaque pointer; we never deref the struct.
@@ -446,6 +622,45 @@ fn open(path: &str) -> Result<Library, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// VDPAU vendor header `<vdpau/vdpau.h>` defines `VdpPictureInfoHEVC`
+    /// as a 1352-byte struct on this platform; confirm our Rust mirror
+    /// matches byte-for-byte. Mismatch would corrupt every HEVC decode.
+    #[test]
+    fn vdp_picture_info_hevc_size_matches_header() {
+        // 1352 measured from a tiny C program against
+        // /usr/include/vdpau/vdpau.h on this host (NVIDIA).
+        assert_eq!(std::mem::size_of::<VdpPictureInfoHEVC>(), 1352);
+    }
+
+    /// VDPAU vendor header defines `VdpPictureInfoVP9` as a 236-byte
+    /// struct; confirm our Rust mirror matches.
+    #[test]
+    fn vdp_picture_info_vp9_size_matches_header() {
+        assert_eq!(std::mem::size_of::<VdpPictureInfoVP9>(), 236);
+    }
+
+    /// Spot-check a handful of HEVC field offsets against the C header.
+    /// Catches accidental field reorderings or padding insertions.
+    #[test]
+    fn vdp_picture_info_hevc_offsets_match_header() {
+        use std::mem::offset_of;
+        // Values measured from /usr/include/vdpau/vdpau.h on this host.
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, chroma_format_idc), 0);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, pic_width_in_luma_samples), 4);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, scaling_list_4x4), 23);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, scaling_list_8x8), 119);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, scaling_list_16x16), 503);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, scaling_list_32x32), 887);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, num_short_term_ref_pic_sets), 1031);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, column_width_minus1), 1060);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, row_height_minus1), 1100);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, idr_pic_flag), 1154);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, curr_pic_order_cnt_val), 1176);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, ref_pics), 1180);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, pic_order_cnt_val), 1244);
+        assert_eq!(offset_of!(VdpPictureInfoHEVC, ref_pic_set_lt_curr), 1343);
+    }
 
     /// Smoke test: libvdpau.so.1 + libX11.so.6 on this machine load
     /// cleanly.

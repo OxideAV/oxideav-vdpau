@@ -525,7 +525,7 @@ impl H264VdpauDecoder {
 
 /// Read NV12 bytes from `surface` and split the interleaved UV plane
 /// into separate U/V buffers (I420 layout).
-fn get_bits_nv12_as_i420(
+pub(crate) fn get_bits_nv12_as_i420(
     surface: &VdpVideoSurface,
     width: u32,
     height: u32,
