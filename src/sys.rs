@@ -334,6 +334,39 @@ pub struct VdpPictureInfoH264 {
     pub reference_frames: [VdpReferenceFrameH264; 16],
 }
 
+// ─────────────────────────── MPEG-1/2 picture info ──────────────────────────
+
+/// Picture-parameter struct passed to `VdpDecoderRender` when the
+/// decoder profile is one of the MPEG-1 / MPEG-2 profiles. Layout
+/// copied verbatim from `<vdpau/vdpau.h>` `VdpPictureInfoMPEG1Or2`.
+///
+/// The struct ends with the two 64-byte quantizer matrices, in raster
+/// order. Decoders are required to fill both even when the bitstream
+/// did not transmit them — they default to the spec's "default"
+/// matrices.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VdpPictureInfoMPEG1Or2 {
+    pub forward_reference: VdpVideoSurface,
+    pub backward_reference: VdpVideoSurface,
+    pub slice_count: u32,
+
+    pub picture_structure: u8,
+    pub picture_coding_type: u8,
+    pub intra_dc_precision: u8,
+    pub frame_pred_frame_dct: u8,
+    pub concealment_motion_vectors: u8,
+    pub intra_vlc_format: u8,
+    pub alternate_scan: u8,
+    pub q_scale_type: u8,
+    pub top_field_first: u8,
+    pub full_pel_forward_vector: u8,
+    pub full_pel_backward_vector: u8,
+    pub f_code: [[u8; 2]; 2],
+    pub intra_quantizer_matrix: [u8; 64],
+    pub non_intra_quantizer_matrix: [u8; 64],
+}
+
 // ─────────────────────────── HEVC picture info ───────────────────────────────
 
 /// Picture-parameter struct passed to `VdpDecoderRender` when the
@@ -622,6 +655,24 @@ fn open(path: &str) -> Result<Library, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// VDPAU vendor header defines `VdpPictureInfoMPEG1Or2` as a
+    /// 156-byte struct; confirm our Rust mirror matches.
+    #[test]
+    fn vdp_picture_info_mpeg1or2_size_matches_header() {
+        assert_eq!(std::mem::size_of::<VdpPictureInfoMPEG1Or2>(), 156);
+    }
+
+    /// Spot-check MPEG-1/2 field offsets against the C header.
+    #[test]
+    fn vdp_picture_info_mpeg1or2_offsets_match_header() {
+        use std::mem::offset_of;
+        assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, slice_count), 8);
+        assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, picture_structure), 12);
+        assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, f_code), 23);
+        assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, intra_quantizer_matrix), 27);
+        assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, non_intra_quantizer_matrix), 91);
+    }
 
     /// VDPAU vendor header `<vdpau/vdpau.h>` defines `VdpPictureInfoHEVC`
     /// as a 1352-byte struct on this platform; confirm our Rust mirror

@@ -50,12 +50,14 @@
 pub mod device;
 pub mod h264;
 pub mod hevc;
+pub mod mpeg2;
 pub mod sys;
 pub mod vp9;
 
 pub use device::{DecoderCaps, Display, VdpDecoder, VdpDevice, VdpError, VdpVideoSurface};
 pub use h264::{DecodedFrame, H264VdpauDecoder};
 pub use hevc::HevcVdpauDecoder;
+pub use mpeg2::Mpeg2VdpauDecoder;
 pub use vp9::Vp9VdpauDecoder;
 
 /// Confirm the VDPAU + libX11 frameworks load, but do not register
