@@ -7,7 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added — Round 2
+
+- `libX11.so.6` is now dlopened alongside `libvdpau.so.1`; the
+  `Vtable` resolves `XOpenDisplay`, `XCloseDisplay`, and
+  `XDefaultScreen` so the bridge no longer needs a compile-time
+  Xlib link dependency.
+- VDPAU function-ID constants (`VDP_FUNC_ID_GET_API_VERSION`,
+  `_GET_INFORMATION_STRING`, `_DEVICE_DESTROY`,
+  `_DECODER_QUERY_CAPABILITIES`, `_DECODER_CREATE`, `_DECODER_DESTROY`,
+  `_DECODER_RENDER`) and the common `VdpDecoderProfile` constants
+  (H.264 Baseline/Main/High + variants, MPEG-2, VC-1, MPEG-4 Pt 2,
+  VP9 0..3, HEVC Main/Main10/Still/Main12, AV1 Main/High/Professional)
+  are exposed in `sys`.
+- VDPAU function pointer typedefs for the post-bootstrap entries:
+  `FnVdpGetApiVersion`, `FnVdpGetInformationString`,
+  `FnVdpDeviceDestroy`, `FnVdpDecoderQueryCapabilities`.
+- New `device` module with safe wrappers:
+  - `Display` owns an `XDisplay*`; opens via `Display::open` /
+    `Display::open_from_env`; `Drop` calls `XCloseDisplay`.
+  - `VdpDevice` owns a `VdpDevice` handle plus the resolved
+    post-bootstrap dispatch table; created via
+    `Display::create_vdp_device`; `Drop` calls `VdpDeviceDestroy`.
+    Methods: `information_string()`, `api_version()`,
+    `decoder_caps(profile)`.
+  - `DecoderCaps` carries the five outputs of
+    `VdpDecoderQueryCapabilities` (supported bool + max level /
+    macroblocks / width / height).
+  - `VdpError` wraps `VdpStatus` with a contextual message.
+- Integration test suite `tests/round2_init.rs` — five skip-friendly
+  end-to-end tests: display opens, device creates, info string +
+  API version, H.264 High capability query.
+
+### Added — Round 1
 
 - Initial scaffolding: `#![cfg(target_os = "linux")]` crate that
   dlopens `libvdpau.so.1` via `libloading` on first use.

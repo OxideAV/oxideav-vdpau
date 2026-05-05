@@ -47,7 +47,7 @@ Users who want to force the pure-Rust path globally can pass `--no-hwaccel` to t
 
 Encode is intentionally absent — VDPAU has no encode counterpart. Encoders go through NVENC (`oxideav-nvidia`) or VA-API (`oxideav-vaapi`).
 
-Round 1 (this commit): scaffolding only. The crate dlopens `libvdpau.so.1`, resolves `vdp_device_create_x11`, and exposes a `register(&mut RuntimeContext)` entry point that confirms the framework loads without registering any codec factories yet. Round 2: full `VdpGetProcAddress` dispatch table + H.264 + HEVC decode.
+Round 2 (this commit): the bridge now opens an X server connection (libX11 dlopen — `XOpenDisplay`/`XCloseDisplay`/`XDefaultScreen`), creates a `VdpDevice` via `vdp_device_create_x11`, and resolves the post-bootstrap dispatch table (`VdpDeviceDestroy`, `VdpGetApiVersion`, `VdpGetInformationString`, `VdpDecoderQueryCapabilities`) through the `VdpGetProcAddress` pointer the create call writes back. Safe wrappers — `Display`, `VdpDevice`, `DecoderCaps`, `VdpError` — own the lifecycle (Drop calls `VdpDeviceDestroy` and `XCloseDisplay`). Profile/function-ID constants are exposed in `sys` for callers that want to query specific codecs (`sys::VDP_DECODER_PROFILE_H264_HIGH`, `_HEVC_MAIN`, `_VP9_PROFILE_0`, `_AV1_MAIN`, …). Round 3: codec factories — H.264 + HEVC decode through `VdpDecoderCreate` / `VdpDecoderRender`.
 
 ## Workspace policy
 
