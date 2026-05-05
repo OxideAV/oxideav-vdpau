@@ -48,9 +48,11 @@
 //! from libvpx, libwebp, libjxl, etc.) doesn't apply here.
 
 pub mod device;
+pub mod h264;
 pub mod sys;
 
-pub use device::{DecoderCaps, Display, VdpDevice, VdpError};
+pub use device::{DecoderCaps, Display, VdpDecoder, VdpDevice, VdpError, VdpVideoSurface};
+pub use h264::{DecodedFrame, H264VdpauDecoder};
 
 /// Confirm the VDPAU + libX11 frameworks load, but do not register
 /// any codec factories yet (Round 2 — codec factories come in Round 3).

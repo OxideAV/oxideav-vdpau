@@ -41,6 +41,10 @@ pub type VdpDevice = u32;
 /// `VdpDecoderCreate` (resolved post-bootstrap via VdpGetProcAddress).
 pub type VdpDecoder = u32;
 
+/// VDPAU video surface handle. 32-bit opaque ID returned by
+/// `VdpVideoSurfaceCreate`.
+pub type VdpVideoSurface = u32;
+
 /// VdpStatus — return code for almost every VDPAU entry point.
 pub type VdpStatus = i32;
 
@@ -55,8 +59,24 @@ pub type VdpBool = i32;
 /// codec profile (H.264 High, HEVC Main, …).
 pub type VdpDecoderProfile = u32;
 
+/// VdpChromaType — `uint32_t` in the C header. Identifies a chroma
+/// subsampling pattern for a `VdpVideoSurface`.
+pub type VdpChromaType = u32;
+
+/// VdpYCbCrFormat — `uint32_t` in the C header. Identifies a YCbCr
+/// pixel layout used for `VdpVideoSurfaceGetBitsYCbCr` /
+/// `VdpVideoSurfacePutBitsYCbCr`.
+pub type VdpYCbCrFormat = u32;
+
 /// Success status: `VDP_STATUS_OK == 0`.
 pub const VDP_STATUS_OK: VdpStatus = 0;
+
+/// Sentinel value used in VDPAU "reference frame" slots that are
+/// unused. Defined as `0xffffffffU` in the C header.
+pub const VDP_INVALID_HANDLE: u32 = 0xffff_ffff;
+
+/// Required value for `VdpBitstreamBuffer::struct_version`.
+pub const VDP_BITSTREAM_BUFFER_VERSION: u32 = 0;
 
 // ─────────────────────────── VDPAU function IDs ──────────────────────────────
 //
@@ -66,10 +86,33 @@ pub const VDP_STATUS_OK: VdpStatus = 0;
 pub const VDP_FUNC_ID_GET_API_VERSION: VdpFuncId = 2;
 pub const VDP_FUNC_ID_GET_INFORMATION_STRING: VdpFuncId = 4;
 pub const VDP_FUNC_ID_DEVICE_DESTROY: VdpFuncId = 5;
+pub const VDP_FUNC_ID_VIDEO_SURFACE_QUERY_CAPABILITIES: VdpFuncId = 7;
+pub const VDP_FUNC_ID_VIDEO_SURFACE_CREATE: VdpFuncId = 9;
+pub const VDP_FUNC_ID_VIDEO_SURFACE_DESTROY: VdpFuncId = 10;
+pub const VDP_FUNC_ID_VIDEO_SURFACE_GET_BITS_Y_CB_CR: VdpFuncId = 12;
 pub const VDP_FUNC_ID_DECODER_QUERY_CAPABILITIES: VdpFuncId = 36;
 pub const VDP_FUNC_ID_DECODER_CREATE: VdpFuncId = 37;
 pub const VDP_FUNC_ID_DECODER_DESTROY: VdpFuncId = 38;
 pub const VDP_FUNC_ID_DECODER_RENDER: VdpFuncId = 40;
+
+// ─────────────────────────── Chroma types ────────────────────────────────────
+//
+// `<vdpau/vdpau.h>` defines these as small integer enum values, not
+// fourcc codes. We only carry the three "frame" types used by Round 3.
+pub const VDP_CHROMA_TYPE_420: VdpChromaType = 0;
+pub const VDP_CHROMA_TYPE_422: VdpChromaType = 1;
+pub const VDP_CHROMA_TYPE_444: VdpChromaType = 2;
+
+// ─────────────────────────── YCbCr formats ───────────────────────────────────
+//
+// Despite their fourcc-looking names these constants are integer enums
+// in `<vdpau/vdpau.h>` (`VdpYCbCrFormat`). NV12 = 0, YV12 = 1, etc.
+pub const VDP_YCBCR_FORMAT_NV12: VdpYCbCrFormat = 0;
+pub const VDP_YCBCR_FORMAT_YV12: VdpYCbCrFormat = 1;
+pub const VDP_YCBCR_FORMAT_UYVY: VdpYCbCrFormat = 2;
+pub const VDP_YCBCR_FORMAT_YUYV: VdpYCbCrFormat = 3;
+pub const VDP_YCBCR_FORMAT_Y8U8V8A8: VdpYCbCrFormat = 4;
+pub const VDP_YCBCR_FORMAT_V8U8Y8A8: VdpYCbCrFormat = 5;
 
 // ─────────────────────────── VDPAU decoder profiles ──────────────────────────
 
@@ -151,6 +194,145 @@ pub type FnVdpDecoderQueryCapabilities = unsafe extern "C" fn(
     max_width: *mut u32,
     max_height: *mut u32,
 ) -> VdpStatus;
+
+/// `VdpVideoSurfaceCreate(device, chroma_type, width, height, *surface_out)`
+/// — resolved via VdpGetProcAddress.
+pub type FnVdpVideoSurfaceCreate = unsafe extern "C" fn(
+    device: VdpDevice,
+    chroma_type: VdpChromaType,
+    width: u32,
+    height: u32,
+    surface: *mut VdpVideoSurface,
+) -> VdpStatus;
+
+/// `VdpVideoSurfaceDestroy(surface)` — resolved via VdpGetProcAddress.
+pub type FnVdpVideoSurfaceDestroy =
+    unsafe extern "C" fn(surface: VdpVideoSurface) -> VdpStatus;
+
+/// `VdpVideoSurfaceGetBitsYCbCr(surface, dest_format, dest_data, dest_pitches)`
+/// — resolved via VdpGetProcAddress. `dest_data` is an array of
+/// `void*` per plane and `dest_pitches` is a parallel `uint32_t`
+/// array; the count of entries depends on `dest_format` (NV12 → 2,
+/// YV12 → 3, packed formats → 1).
+pub type FnVdpVideoSurfaceGetBitsYCbCr = unsafe extern "C" fn(
+    surface: VdpVideoSurface,
+    destination_ycbcr_format: VdpYCbCrFormat,
+    destination_data: *const *mut c_void,
+    destination_pitches: *const u32,
+) -> VdpStatus;
+
+/// `VdpDecoderCreate(device, profile, width, height, max_references, *decoder_out)`
+/// — resolved via VdpGetProcAddress.
+pub type FnVdpDecoderCreate = unsafe extern "C" fn(
+    device: VdpDevice,
+    profile: VdpDecoderProfile,
+    width: u32,
+    height: u32,
+    max_references: u32,
+    decoder: *mut VdpDecoder,
+) -> VdpStatus;
+
+/// `VdpDecoderDestroy(decoder)` — resolved via VdpGetProcAddress.
+pub type FnVdpDecoderDestroy = unsafe extern "C" fn(decoder: VdpDecoder) -> VdpStatus;
+
+/// `VdpDecoderRender(decoder, target_surface, picture_info,
+/// bitstream_buffer_count, bitstream_buffers)` — resolved via
+/// VdpGetProcAddress. `picture_info` points to a codec-specific
+/// struct (e.g. `VdpPictureInfoH264`) whose layout matches the
+/// profile the decoder was created with.
+pub type FnVdpDecoderRender = unsafe extern "C" fn(
+    decoder: VdpDecoder,
+    target: VdpVideoSurface,
+    picture_info: *const c_void,
+    bitstream_buffer_count: u32,
+    bitstream_buffers: *const VdpBitstreamBuffer,
+) -> VdpStatus;
+
+// ─────────────────────────── Bitstream buffer ────────────────────────────────
+
+/// Application data buffer containing compressed video bitstream
+/// data. Layout matches `VdpBitstreamBuffer` in `<vdpau/vdpau.h>`:
+/// three fields, no implicit padding on either ILP32 or LP64
+/// (4-byte struct_version + 8-byte pointer + 4-byte length, total 16
+/// or 24 bytes depending on pointer width).
+///
+/// `struct_version` must be `VDP_BITSTREAM_BUFFER_VERSION` (== 0).
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VdpBitstreamBuffer {
+    pub struct_version: u32,
+    pub bitstream: *const c_void,
+    pub bitstream_bytes: u32,
+}
+
+// ─────────────────────────── H.264 picture info ──────────────────────────────
+
+/// One slot in `VdpPictureInfoH264::referenceFrames`. Fields copied
+/// verbatim from `<vdpau/vdpau.h>`.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VdpReferenceFrameH264 {
+    /// Surface that holds the reference frame, or `VDP_INVALID_HANDLE`.
+    pub surface: VdpVideoSurface,
+    /// Long term reference flag (else short term).
+    pub is_long_term: VdpBool,
+    /// Whether the top field is a reference.
+    pub top_is_reference: VdpBool,
+    /// Whether the bottom field is a reference.
+    pub bottom_is_reference: VdpBool,
+    /// `[0]` = top, `[1]` = bottom.
+    pub field_order_cnt: [i32; 2],
+    /// `frame_num` for short-term refs / `LongTermPicNum` for long-term.
+    pub frame_idx: u16,
+}
+
+/// Picture-parameter struct passed to `VdpDecoderRender` when the
+/// decoder profile is one of the H.264 (non-444) profiles. Layout
+/// copied verbatim from `<vdpau/vdpau.h>` `VdpPictureInfoH264`.
+///
+/// **Note**: the `referenceFrames` array trails 16 entries even when
+/// the active DPB is smaller — unused slots must have
+/// `surface = VDP_INVALID_HANDLE`.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VdpPictureInfoH264 {
+    pub slice_count: u32,
+    pub field_order_cnt: [i32; 2],
+    pub is_reference: VdpBool,
+
+    pub frame_num: u16,
+    pub field_pic_flag: u8,
+    pub bottom_field_flag: u8,
+    pub num_ref_frames: u8,
+    pub mb_adaptive_frame_field_flag: u8,
+    pub constrained_intra_pred_flag: u8,
+    pub weighted_pred_flag: u8,
+    pub weighted_bipred_idc: u8,
+    pub frame_mbs_only_flag: u8,
+    pub transform_8x8_mode_flag: u8,
+    pub chroma_qp_index_offset: i8,
+    pub second_chroma_qp_index_offset: i8,
+    pub pic_init_qp_minus26: i8,
+    pub num_ref_idx_l0_active_minus1: u8,
+    pub num_ref_idx_l1_active_minus1: u8,
+    pub log2_max_frame_num_minus4: u8,
+    pub pic_order_cnt_type: u8,
+    pub log2_max_pic_order_cnt_lsb_minus4: u8,
+    pub delta_pic_order_always_zero_flag: u8,
+    pub direct_8x8_inference_flag: u8,
+    pub entropy_coding_mode_flag: u8,
+    pub pic_order_present_flag: u8,
+    pub deblocking_filter_control_present_flag: u8,
+    pub redundant_pic_cnt_present_flag: u8,
+
+    /// 4x4 scaling lists, raster order.
+    pub scaling_lists_4x4: [[u8; 16]; 6],
+    /// 8x8 scaling lists, raster order.
+    pub scaling_lists_8x8: [[u8; 64]; 2],
+
+    /// 16-entry DPB, unused slots set to `VDP_INVALID_HANDLE`.
+    pub reference_frames: [VdpReferenceFrameH264; 16],
+}
 
 // ─────────────────────────── X11 opaque types ────────────────────────────────
 
