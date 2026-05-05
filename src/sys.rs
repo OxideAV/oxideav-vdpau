@@ -640,6 +640,41 @@ mod tests {
         assert_eq!(std::mem::size_of::<VdpPictureInfoVP9>(), 236);
     }
 
+    /// Spot-check VP9 field offsets against the C header.
+    #[test]
+    fn vdp_picture_info_vp9_offsets_match_header() {
+        use std::mem::offset_of;
+        assert_eq!(offset_of!(VdpPictureInfoVP9, width), 0);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, height), 4);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, last_reference), 8);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, color_space), 20);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, profile), 22);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, frame_context_idx), 24);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, key_frame), 26);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, show_frame), 28);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, error_resilient), 30);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, ref_frame_sign_bias), 44);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, bit_depth_minus8_luma), 48);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, mode_ref_lf_enabled), 52);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, segment_enabled), 55);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, segment_feature_enable), 59);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, segment_feature_data), 92);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, mb_segment_tree_probs), 156);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, segment_pred_probs), 163);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, reserved_segment_16_bits), 166);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, qp_y_ac), 168);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, qp_y_dc), 172);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, qp_ch_dc), 176);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, qp_ch_ac), 180);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, active_ref_idx), 184);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, reset_frame_context), 196);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, mcomp_filter_type), 200);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, mb_ref_lf_delta), 204);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, mb_mode_lf_delta), 220);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, uncompressed_header_size), 228);
+        assert_eq!(offset_of!(VdpPictureInfoVP9, compressed_header_size), 232);
+    }
+
     /// Spot-check a handful of HEVC field offsets against the C header.
     /// Catches accidental field reorderings or padding insertions.
     #[test]
