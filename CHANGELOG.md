@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Round 6
+
+- New `engine` module exposing `pub fn engine_info() -> Vec<HwDeviceInfo>`,
+  the on-demand `oxideav_core::EngineProbeFn` for this backend. Re-exported
+  at the crate root as `oxideav_vdpau::engine_info`.
+- The probe opens an X display via `Display::open_from_env()`, creates a
+  `VdpDevice`, queries `VdpGetInformationString` + `VdpGetApiVersion`, and
+  walks `VdpDecoderQueryCapabilities` for the seven codec families VDPAU
+  exposes (h264, hevc, vp9, av1, mpeg2, vc1, mpeg4). Each family reports
+  the representative profile's `max_width` / `max_height` / `max_level` /
+  `max_macroblocks`, plus the fan-out list of supported profile labels
+  (e.g. H.264 → `["Baseline", "Main", "High", "ConstrainedBaseline",
+  "Extended", "ProgressiveHigh", "ConstrainedHigh"]` if all are
+  supported). VDPAU has no encode side, so every `HwCodecCaps::encode` is
+  `false`; `total_memory_bytes` is `None` (VDPAU doesn't expose
+  per-device memory); the full driver banner is included verbatim under
+  `extra["information_string"]`.
+- The probe is skip-friendly — every error path (no `$DISPLAY`, X
+  unreachable, libvdpau missing, `vdp_device_create_x11` failed, dispatch
+  table resolve failed) returns `vec![]`. VDPAU is per-X-display, not
+  per-GPU, so the probe never returns more than one entry on this driver.
+- The probe parses the marketing name + version number out of the NVIDIA
+  banner: `parse_device_name` takes the first banner line trimmed,
+  `parse_driver_version` picks the first whitespace-separated digits-and-
+  dots token (e.g. `"580.95.05"`).
+- Integration test `tests/round6_engine_info.rs`: asserts that on a host
+  with VDPAU reachable the probe reports a non-empty name, an API
+  version, and an `h264` codec entry with `decode = true`,
+  `max_width >= 1920`, `encode = false`. Skips cleanly on hosts without
+  VDPAU.
+
 ### Changed — Round 5
 
 - Migrated the H.264 SPS / PPS / slice-header parser to the new shared

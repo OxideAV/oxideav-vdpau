@@ -48,6 +48,7 @@
 //! from libvpx, libwebp, libjxl, etc.) doesn't apply here.
 
 pub mod device;
+pub mod engine;
 pub mod h264;
 pub mod hevc;
 pub mod mpeg2;
@@ -55,6 +56,7 @@ pub mod sys;
 pub mod vp9;
 
 pub use device::{DecoderCaps, Display, VdpDecoder, VdpDevice, VdpError, VdpVideoSurface};
+pub use engine::engine_info;
 pub use h264::{DecodedFrame, H264VdpauDecoder};
 pub use hevc::HevcVdpauDecoder;
 pub use mpeg2::Mpeg2VdpauDecoder;
