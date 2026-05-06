@@ -6,7 +6,7 @@
 
 #![cfg(target_os = "linux")]
 
-use oxideav_vdpau::{Display, HevcVdpauDecoder, VdpDevice, sys};
+use oxideav_vdpau::{sys, Display, HevcVdpauDecoder, VdpDevice};
 
 fn open_device(name: &str) -> Option<VdpDevice> {
     let display = match Display::open_from_env() {
@@ -160,13 +160,26 @@ fn hevc_idr_decode_matches_ffmpeg_reference() {
     }
 
     // Generate the reference YUV via ffmpeg subprocess.
-    let fixture_path =
-        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/hevc_main_320x240_1frame.h265");
+    let fixture_path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/hevc_main_320x240_1frame.h265"
+    );
     let out_path = std::env::temp_dir().join("oxideav_vdpau_hevc_ref.yuv");
     let _ = std::fs::remove_file(&out_path);
     let status = match std::process::Command::new("ffmpeg")
-        .args(["-y", "-loglevel", "error", "-i", fixture_path, "-frames:v", "1",
-               "-f", "rawvideo", "-pix_fmt", "yuv420p"])
+        .args([
+            "-y",
+            "-loglevel",
+            "error",
+            "-i",
+            fixture_path,
+            "-frames:v",
+            "1",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "yuv420p",
+        ])
         .arg(&out_path)
         .status()
     {

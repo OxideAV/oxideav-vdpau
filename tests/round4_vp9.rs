@@ -6,7 +6,7 @@
 
 #![cfg(target_os = "linux")]
 
-use oxideav_vdpau::{Display, VdpDevice, Vp9VdpauDecoder, sys};
+use oxideav_vdpau::{sys, Display, VdpDevice, Vp9VdpauDecoder};
 
 fn open_device(name: &str) -> Option<VdpDevice> {
     let display = match Display::open_from_env() {
@@ -29,7 +29,6 @@ fn open_device(name: &str) -> Option<VdpDevice> {
 }
 
 const FIXTURE: &[u8] = include_bytes!("fixtures/vp9_320x240_1frame.ivf");
-
 
 /// On NVIDIA Pascal+ hardware VDPAU advertises support for VP9 Profile 0.
 #[test]
@@ -159,13 +158,26 @@ fn vp9_keyframe_decode_matches_ffmpeg_reference() {
         return;
     }
 
-    let fixture_path =
-        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/vp9_320x240_1frame.ivf");
+    let fixture_path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/vp9_320x240_1frame.ivf"
+    );
     let out_path = std::env::temp_dir().join("oxideav_vdpau_vp9_ref.yuv");
     let _ = std::fs::remove_file(&out_path);
     let status = match std::process::Command::new("ffmpeg")
-        .args(["-y", "-loglevel", "error", "-i", fixture_path, "-frames:v", "1",
-               "-f", "rawvideo", "-pix_fmt", "yuv420p"])
+        .args([
+            "-y",
+            "-loglevel",
+            "error",
+            "-i",
+            fixture_path,
+            "-frames:v",
+            "1",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "yuv420p",
+        ])
         .arg(&out_path)
         .status()
     {

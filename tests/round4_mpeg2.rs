@@ -2,7 +2,7 @@
 
 #![cfg(target_os = "linux")]
 
-use oxideav_vdpau::{Display, Mpeg2VdpauDecoder, VdpDevice, sys};
+use oxideav_vdpau::{sys, Display, Mpeg2VdpauDecoder, VdpDevice};
 
 fn open_device(name: &str) -> Option<VdpDevice> {
     let display = match Display::open_from_env() {
@@ -50,7 +50,10 @@ fn decoder_caps_mpeg2_main_supported_on_nvidia() {
         "MPEG2_MAIN caps: supported={} max_level={} max_macroblocks={} max={}x{}",
         caps.supported, caps.max_level, caps.max_macroblocks, caps.max_width, caps.max_height
     );
-    assert!(caps.supported, "expected NVIDIA VDPAU to advertise MPEG-2 Main support");
+    assert!(
+        caps.supported,
+        "expected NVIDIA VDPAU to advertise MPEG-2 Main support"
+    );
 }
 
 #[test]
@@ -95,15 +98,25 @@ fn mpeg2_iframe_decode_yields_non_trivial_luma() {
     let (mut lo, mut hi) = (255u8, 0u8);
     for &v in &frame.y {
         seen[v as usize] = true;
-        if v < lo { lo = v; }
-        if v > hi { hi = v; }
+        if v < lo {
+            lo = v;
+        }
+        if v > hi {
+            hi = v;
+        }
     }
     let unique = seen.iter().filter(|b| **b).count();
     eprintln!(
         "mpeg2_iframe_decode_yields_non_trivial_luma: unique luma values={unique}, range=[{lo},{hi}]"
     );
-    assert!(unique >= 16, "luma should span at least 16 distinct values, got {unique}");
-    assert!(hi as u32 - lo as u32 >= 64, "luma range too narrow: [{lo},{hi}]");
+    assert!(
+        unique >= 16,
+        "luma should span at least 16 distinct values, got {unique}"
+    );
+    assert!(
+        hi as u32 - lo as u32 >= 64,
+        "luma range too narrow: [{lo},{hi}]"
+    );
 }
 
 /// Cross-validate against ffmpeg reference.
@@ -119,12 +132,26 @@ fn mpeg2_iframe_decode_matches_ffmpeg_reference() {
         return;
     }
 
-    let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/mpeg2_main_320x240_1frame.m2v");
+    let fixture_path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/mpeg2_main_320x240_1frame.m2v"
+    );
     let out_path = std::env::temp_dir().join("oxideav_vdpau_mpeg2_ref.yuv");
     let _ = std::fs::remove_file(&out_path);
     let status = match std::process::Command::new("ffmpeg")
-        .args(["-y", "-loglevel", "error", "-i", fixture_path, "-frames:v", "1",
-               "-f", "rawvideo", "-pix_fmt", "yuv420p"])
+        .args([
+            "-y",
+            "-loglevel",
+            "error",
+            "-i",
+            fixture_path,
+            "-frames:v",
+            "1",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "yuv420p",
+        ])
         .arg(&out_path)
         .status()
     {

@@ -21,14 +21,13 @@
 
 use std::ffi::c_void;
 
+use oxideav_bitstream::h264::{parse_idr_only, H264Pps, H264Sps};
 use oxideav_bitstream::BitstreamError;
-use oxideav_bitstream::h264::{H264Pps, H264Sps, parse_idr_only};
 
 use crate::device::{VdpDecoder, VdpDevice, VdpError, VdpVideoSurface};
 use crate::sys::{
-    VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_H264_HIGH,
-    VDP_INVALID_HANDLE, VDP_YCBCR_FORMAT_NV12, VdpBitstreamBuffer, VdpPictureInfoH264,
-    VdpReferenceFrameH264,
+    VdpBitstreamBuffer, VdpPictureInfoH264, VdpReferenceFrameH264, VDP_BITSTREAM_BUFFER_VERSION,
+    VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_H264_HIGH, VDP_INVALID_HANDLE, VDP_YCBCR_FORMAT_NV12,
 };
 
 // ─────────────────────────── Error conversion ────────────────────────────────
@@ -131,11 +130,7 @@ impl H264VdpauDecoder {
     /// Decode the full Annex-B fixture (assumed to contain exactly
     /// one IDR access unit) and return the resulting NV12-deinterleaved
     /// I420 frame.
-    pub fn decode_idr(
-        &self,
-        device: &VdpDevice,
-        annex_b: &[u8],
-    ) -> Result<DecodedFrame, VdpError> {
+    pub fn decode_idr(&self, device: &VdpDevice, annex_b: &[u8]) -> Result<DecodedFrame, VdpError> {
         // Build the picture-info struct for an IDR with no references.
         let pic_info = self.build_idr_picture_info();
 
@@ -200,9 +195,7 @@ impl H264VdpauDecoder {
             delta_pic_order_always_zero_flag: u8::from(self.sps.delta_pic_order_always_zero_flag),
             direct_8x8_inference_flag: u8::from(self.sps.direct_8x8_inference_flag),
             entropy_coding_mode_flag: u8::from(self.pps.entropy_coding_mode_flag),
-            pic_order_present_flag: u8::from(
-                self.pps.bottom_field_pic_order_in_frame_present_flag,
-            ),
+            pic_order_present_flag: u8::from(self.pps.bottom_field_pic_order_in_frame_present_flag),
             deblocking_filter_control_present_flag: u8::from(
                 self.pps.deblocking_filter_control_present_flag,
             ),

@@ -28,10 +28,10 @@
 use std::ffi::c_void;
 
 use crate::device::{VdpDecoder, VdpDevice, VdpError};
-use crate::h264::{DecodedFrame, get_bits_nv12_as_i420};
+use crate::h264::{get_bits_nv12_as_i420, DecodedFrame};
 use crate::sys::{
-    VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_MPEG2_MAIN,
-    VDP_INVALID_HANDLE, VdpBitstreamBuffer, VdpPictureInfoMPEG1Or2,
+    VdpBitstreamBuffer, VdpPictureInfoMPEG1Or2, VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420,
+    VDP_DECODER_PROFILE_MPEG2_MAIN, VDP_INVALID_HANDLE,
 };
 
 // ─────────────────────────── Default quantizer matrices ─────────────────────
@@ -40,14 +40,9 @@ use crate::sys::{
 /// spec, table 7-3 in ISO 13818-2). Most encoders use this when not
 /// transmitting a custom matrix.
 const DEFAULT_INTRA_QUANT: [u8; 64] = [
-    8,  16, 19, 22, 26, 27, 29, 34,
-    16, 16, 22, 24, 27, 29, 34, 37,
-    19, 22, 26, 27, 29, 34, 34, 38,
-    22, 22, 26, 27, 29, 34, 37, 40,
-    22, 26, 27, 29, 32, 35, 40, 48,
-    26, 27, 29, 32, 35, 40, 48, 58,
-    26, 27, 29, 34, 38, 46, 56, 69,
-    27, 29, 35, 38, 46, 56, 69, 83,
+    8, 16, 19, 22, 26, 27, 29, 34, 16, 16, 22, 24, 27, 29, 34, 37, 19, 22, 26, 27, 29, 34, 34, 38,
+    22, 22, 26, 27, 29, 34, 37, 40, 22, 26, 27, 29, 32, 35, 40, 48, 26, 27, 29, 32, 35, 40, 48, 58,
+    26, 27, 29, 34, 38, 46, 56, 69, 27, 29, 35, 38, 46, 56, 69, 83,
 ];
 
 /// Default non-intra-quantizer matrix (uniform 16/16, table 7-4).
@@ -57,14 +52,9 @@ const DEFAULT_NON_INTRA_QUANT: [u8; 64] = [16; 64];
 /// quantizer matrices into raster order before handing them to VDPAU
 /// (the C struct comment says "Convert to raster order").
 const ZIGZAG_TO_RASTER: [u8; 64] = [
-     0,  1,  8, 16,  9,  2,  3, 10,
-    17, 24, 32, 25, 18, 11,  4,  5,
-    12, 19, 26, 33, 40, 48, 41, 34,
-    27, 20, 13,  6,  7, 14, 21, 28,
-    35, 42, 49, 56, 57, 50, 43, 36,
-    29, 22, 15, 23, 30, 37, 44, 51,
-    58, 59, 52, 45, 38, 31, 39, 46,
-    53, 60, 61, 54, 47, 55, 62, 63,
+    0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20,
+    13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59,
+    52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63,
 ];
 
 fn zigzag_to_raster_quant(zz: &[u8; 64]) -> [u8; 64] {
@@ -222,10 +212,12 @@ pub(crate) fn parse_picture_header(bytes: &[u8]) -> Result<PictureHeader, VdpErr
         return Err(VdpError::other("parse_picture_header: too short"));
     }
     let mut r = BitReader::new(bytes);
-    let mut p = PictureHeader::default();
-    p._temporal_reference = r.u(10);
-    p.picture_coding_type = r.u(3) as u8;
-    p._vbv_delay = r.u(16);
+    let mut p = PictureHeader {
+        _temporal_reference: r.u(10),
+        picture_coding_type: r.u(3) as u8,
+        _vbv_delay: r.u(16),
+        ..Default::default()
+    };
     if p.picture_coding_type == 2 || p.picture_coding_type == 3 {
         // P or B: full_pel_forward_vector + forward_f_code
         p.full_pel_forward_vector = r.u(1) as u8;
@@ -356,7 +348,8 @@ impl Mpeg2VdpauDecoder {
         // I-frame: zero references needed, but VDPAU expects a non-zero
         // capacity. 2 is the minimum the spec requires for any P/B path.
         let max_refs = 2u32;
-        let decoder = device.create_decoder(VDP_DECODER_PROFILE_MPEG2_MAIN, width, height, max_refs)?;
+        let decoder =
+            device.create_decoder(VDP_DECODER_PROFILE_MPEG2_MAIN, width, height, max_refs)?;
 
         Ok(Self {
             seq,
@@ -433,7 +426,9 @@ impl Mpeg2VdpauDecoder {
             // header's f_code is the MPEG-1 fallback, ignored on MPEG-2).
             f_code: self.pic_ext.f_code,
             intra_quantizer_matrix: zigzag_to_raster_quant(&self.seq.intra_quantizer_matrix),
-            non_intra_quantizer_matrix: zigzag_to_raster_quant(&self.seq.non_intra_quantizer_matrix),
+            non_intra_quantizer_matrix: zigzag_to_raster_quant(
+                &self.seq.non_intra_quantizer_matrix,
+            ),
         }
     }
 }

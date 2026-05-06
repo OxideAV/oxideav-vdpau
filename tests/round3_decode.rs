@@ -7,7 +7,7 @@
 
 #![cfg(target_os = "linux")]
 
-use oxideav_vdpau::{Display, H264VdpauDecoder, VdpDevice, sys};
+use oxideav_vdpau::{sys, Display, H264VdpauDecoder, VdpDevice};
 
 /// Open a Display and a VdpDevice or skip the test cleanly. Returns
 /// `None` if the environment can't run real VDPAU.

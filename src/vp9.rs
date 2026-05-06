@@ -33,10 +33,10 @@
 use std::ffi::c_void;
 
 use crate::device::{VdpDecoder, VdpDevice, VdpError};
-use crate::h264::{DecodedFrame, get_bits_nv12_as_i420};
+use crate::h264::{get_bits_nv12_as_i420, DecodedFrame};
 use crate::sys::{
-    VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_VP9_PROFILE_0,
-    VDP_INVALID_HANDLE, VdpBitstreamBuffer, VdpPictureInfoVP9,
+    VdpBitstreamBuffer, VdpPictureInfoVP9, VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420,
+    VDP_DECODER_PROFILE_VP9_PROFILE_0, VDP_INVALID_HANDLE,
 };
 
 // ─────────────────────────── IVF parsing ────────────────────────────────────
@@ -128,7 +128,7 @@ impl<'a> BitReader<'a> {
 
     fn byte_offset(&self) -> usize {
         // Round up to next whole byte.
-        (self.bit_pos + 7) / 8
+        self.bit_pos.div_ceil(8)
     }
 
     fn bit_offset(&self) -> usize {
@@ -155,7 +155,11 @@ impl<'a> BitReader<'a> {
     fn s(&mut self, n: u32) -> i32 {
         let value = self.f(n) as i32;
         let sign = self.f(1);
-        if sign == 1 { -value } else { value }
+        if sign == 1 {
+            -value
+        } else {
+            value
+        }
     }
 }
 
@@ -279,7 +283,11 @@ fn read_loop_filter_params(r: &mut BitReader<'_>, h: &mut Vp9UncompressedHeader)
 
 fn read_delta_q(r: &mut BitReader<'_>) -> i32 {
     let delta_coded = r.f(1);
-    if delta_coded != 0 { r.s(4) } else { 0 }
+    if delta_coded != 0 {
+        r.s(4)
+    } else {
+        0
+    }
 }
 
 fn read_quantization_params(r: &mut BitReader<'_>, h: &mut Vp9UncompressedHeader) {
@@ -324,7 +332,11 @@ fn read_segmentation_params(r: &mut BitReader<'_>, h: &mut Vp9UncompressedHeader
                         let raw = r.f(bits) as i32;
                         let val = if signed {
                             let sign = r.f(1);
-                            if sign != 0 { -raw } else { raw }
+                            if sign != 0 {
+                                -raw
+                            } else {
+                                raw
+                            }
                         } else {
                             raw
                         };
@@ -353,8 +365,8 @@ fn calc_max_log2_tile_cols(sb64_cols: u32) -> u32 {
 }
 
 fn read_tile_info(r: &mut BitReader<'_>, h: &mut Vp9UncompressedHeader) {
-    let mi_cols = (h.width + 7) / 8;
-    let sb64_cols = (mi_cols + 7) / 8;
+    let mi_cols = h.width.div_ceil(8);
+    let sb64_cols = mi_cols.div_ceil(8);
     let min_log2 = calc_min_log2_tile_cols(sb64_cols);
     let max_log2 = calc_max_log2_tile_cols(sb64_cols);
     let mut log2_cols = min_log2;
@@ -369,16 +381,18 @@ fn read_tile_info(r: &mut BitReader<'_>, h: &mut Vp9UncompressedHeader) {
     let log2_rows = r.f(1);
     h.log2_tile_rows = if log2_rows != 0 {
         let r2 = r.f(1);
-        if r2 != 0 { 2 } else { 1 }
+        if r2 != 0 {
+            2
+        } else {
+            1
+        }
     } else {
         0
     };
 }
 
 /// Parse the uncompressed VP9 header (key frame only).
-pub(crate) fn parse_uncompressed_header(
-    payload: &[u8],
-) -> Result<Vp9UncompressedHeader, VdpError> {
+pub(crate) fn parse_uncompressed_header(payload: &[u8]) -> Result<Vp9UncompressedHeader, VdpError> {
     if payload.len() < 8 {
         return Err(VdpError::other("VP9 frame shorter than 8 bytes"));
     }
@@ -498,7 +512,8 @@ impl Vp9VdpauDecoder {
         let width = header.width;
         let height = header.height;
         let max_refs = 8u32;
-        let decoder = device.create_decoder(VDP_DECODER_PROFILE_VP9_PROFILE_0, width, height, max_refs)?;
+        let decoder =
+            device.create_decoder(VDP_DECODER_PROFILE_VP9_PROFILE_0, width, height, max_refs)?;
         Ok(Self {
             header,
             decoder,
@@ -515,7 +530,11 @@ impl Vp9VdpauDecoder {
         self.height
     }
 
-    pub fn decode_keyframe(&self, device: &VdpDevice, ivf: &[u8]) -> Result<DecodedFrame, VdpError> {
+    pub fn decode_keyframe(
+        &self,
+        device: &VdpDevice,
+        ivf: &[u8],
+    ) -> Result<DecodedFrame, VdpError> {
         let (_ivf_hdr, body) = parse_ivf(ivf)?;
         let frame = match parse_ivf_frame(body)? {
             Some((f, _)) => f,

@@ -34,10 +34,10 @@
 use std::ffi::c_void;
 
 use crate::device::{VdpDecoder, VdpDevice, VdpError};
-use crate::h264::{DecodedFrame, get_bits_nv12_as_i420};
+use crate::h264::{get_bits_nv12_as_i420, DecodedFrame};
 use crate::sys::{
-    VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_HEVC_MAIN,
-    VDP_INVALID_HANDLE, VdpBitstreamBuffer, VdpPictureInfoHEVC,
+    VdpBitstreamBuffer, VdpPictureInfoHEVC, VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420,
+    VDP_DECODER_PROFILE_HEVC_MAIN, VDP_INVALID_HANDLE,
 };
 
 // ─────────────────────────── Annex-B framing (HEVC) ─────────────────────────
@@ -57,11 +57,8 @@ pub(crate) fn split_nal_units(buf: &[u8]) -> Vec<&[u8]> {
     let n = buf.len();
     let mut last_payload_start: Option<usize> = None;
     while i < n {
-        let four = i + 3 < n
-            && buf[i] == 0
-            && buf[i + 1] == 0
-            && buf[i + 2] == 0
-            && buf[i + 3] == 1;
+        let four =
+            i + 3 < n && buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 0 && buf[i + 3] == 1;
         let three = !four && i + 2 < n && buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1;
         if four || three {
             if let Some(start) = last_payload_start.take() {
@@ -106,15 +103,21 @@ fn nal_type(nal: &[u8]) -> u8 {
     (nal[0] >> 1) & 0x3f
 }
 
-#[allow(dead_code)] pub(crate) const NAL_TRAIL_N: u8 = 0;
-#[allow(dead_code)] pub(crate) const NAL_TRAIL_R: u8 = 1;
+#[allow(dead_code)]
+pub(crate) const NAL_TRAIL_N: u8 = 0;
+#[allow(dead_code)]
+pub(crate) const NAL_TRAIL_R: u8 = 1;
 pub(crate) const NAL_BLA_W_LP: u8 = 16;
-#[allow(dead_code)] pub(crate) const NAL_BLA_W_RADL: u8 = 17;
-#[allow(dead_code)] pub(crate) const NAL_BLA_N_LP: u8 = 18;
+#[allow(dead_code)]
+pub(crate) const NAL_BLA_W_RADL: u8 = 17;
+#[allow(dead_code)]
+pub(crate) const NAL_BLA_N_LP: u8 = 18;
 pub(crate) const NAL_IDR_W_RADL: u8 = 19;
 pub(crate) const NAL_IDR_N_LP: u8 = 20;
-#[allow(dead_code)] pub(crate) const NAL_CRA_NUT: u8 = 21;
-#[allow(dead_code)] pub(crate) const NAL_RSV_IRAP_VCL22: u8 = 22;
+#[allow(dead_code)]
+pub(crate) const NAL_CRA_NUT: u8 = 21;
+#[allow(dead_code)]
+pub(crate) const NAL_RSV_IRAP_VCL22: u8 = 22;
 pub(crate) const NAL_RSV_IRAP_VCL23: u8 = 23;
 pub(crate) const NAL_VPS_NUT: u8 = 32;
 pub(crate) const NAL_SPS_NUT: u8 = 33;
@@ -135,11 +138,8 @@ fn locate_idr_start(buf: &[u8]) -> Option<usize> {
     let n = buf.len();
     let mut i = 0;
     while i + 3 < n {
-        let four = buf[i] == 0
-            && buf[i + 1] == 0
-            && buf[i + 2] == 0
-            && buf[i + 3] == 1
-            && i + 4 < n;
+        let four =
+            buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 0 && buf[i + 3] == 1 && i + 4 < n;
         let three = !four && buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1;
         if four || three {
             let header_idx = if four { i + 4 } else { i + 3 };
@@ -386,9 +386,7 @@ fn skip_st_ref_pic_set(
         let _abs_delta_rps_minus1 = r.ue();
         let ref_rps_idx = st_rps_idx as i64 - 1 - delta_idx_m1 as i64;
         if ref_rps_idx < 0 {
-            return Err(VdpError::other(
-                "skip_st_ref_pic_set: negative RefRpsIdx",
-            ));
+            return Err(VdpError::other("skip_st_ref_pic_set: negative RefRpsIdx"));
         }
         // For each j in 0..NumDeltaPocs[RefRpsIdx]: used_by_curr_pic_flag,
         // and conditionally use_delta_flag.
@@ -466,9 +464,11 @@ pub(crate) fn parse_sps(nal: &[u8]) -> Result<Sps, VdpError> {
     }
     let rbsp = strip_emulation_prevention(&nal[2..]);
     let mut r = BitReader::new(&rbsp);
-    let mut sps = Sps::default();
-    sps._vps_id = r.u(4);
-    sps._max_sub_layers_minus1 = r.u(3);
+    let mut sps = Sps {
+        _vps_id: r.u(4),
+        _max_sub_layers_minus1: r.u(3),
+        ..Default::default()
+    };
     let _temporal_id_nesting_flag = r.u(1);
     parse_profile_tier_level(&mut r, sps._max_sub_layers_minus1);
     sps._sps_id = r.ue();
@@ -542,7 +542,7 @@ pub(crate) fn parse_sps(nal: &[u8]) -> Result<Sps, VdpError> {
     if sps.long_term_ref_pics_present_flag != 0 {
         sps.num_long_term_ref_pics_sps = r.ue();
         for _ in 0..sps.num_long_term_ref_pics_sps {
-            let _ = r.u((sps.log2_max_pic_order_cnt_lsb_minus4 + 4) as u32);
+            let _ = r.u(sps.log2_max_pic_order_cnt_lsb_minus4 + 4);
             let _ = r.u(1);
         }
     }
@@ -563,20 +563,22 @@ pub(crate) fn parse_pps(nal: &[u8]) -> Result<Pps, VdpError> {
     }
     let rbsp = strip_emulation_prevention(&nal[2..]);
     let mut r = BitReader::new(&rbsp);
-    let mut pps = Pps::default();
-    pps._pps_id = r.ue();
-    pps._sps_id = r.ue();
-    pps.dependent_slice_segments_enabled_flag = r.u(1) as u8;
-    pps.output_flag_present_flag = r.u(1) as u8;
-    pps.num_extra_slice_header_bits = r.u(3);
-    pps.sign_data_hiding_enabled_flag = r.u(1) as u8;
-    pps.cabac_init_present_flag = r.u(1) as u8;
-    pps.num_ref_idx_l0_default_active_minus1 = r.ue();
-    pps.num_ref_idx_l1_default_active_minus1 = r.ue();
-    pps.init_qp_minus26 = r.se();
-    pps.constrained_intra_pred_flag = r.u(1) as u8;
-    pps.transform_skip_enabled_flag = r.u(1) as u8;
-    pps.cu_qp_delta_enabled_flag = r.u(1) as u8;
+    let mut pps = Pps {
+        _pps_id: r.ue(),
+        _sps_id: r.ue(),
+        dependent_slice_segments_enabled_flag: r.u(1) as u8,
+        output_flag_present_flag: r.u(1) as u8,
+        num_extra_slice_header_bits: r.u(3),
+        sign_data_hiding_enabled_flag: r.u(1) as u8,
+        cabac_init_present_flag: r.u(1) as u8,
+        num_ref_idx_l0_default_active_minus1: r.ue(),
+        num_ref_idx_l1_default_active_minus1: r.ue(),
+        init_qp_minus26: r.se(),
+        constrained_intra_pred_flag: r.u(1) as u8,
+        transform_skip_enabled_flag: r.u(1) as u8,
+        cu_qp_delta_enabled_flag: r.u(1) as u8,
+        ..Default::default()
+    };
     if pps.cu_qp_delta_enabled_flag != 0 {
         pps.diff_cu_qp_delta_depth = r.ue();
     }
@@ -698,11 +700,7 @@ impl HevcVdpauDecoder {
         self.height
     }
 
-    pub fn decode_idr(
-        &self,
-        device: &VdpDevice,
-        annex_b: &[u8],
-    ) -> Result<DecodedFrame, VdpError> {
+    pub fn decode_idr(&self, device: &VdpDevice, annex_b: &[u8]) -> Result<DecodedFrame, VdpError> {
         let pic_info = self.build_idr_picture_info();
         let surface = device.create_video_surface(VDP_CHROMA_TYPE_420, self.width, self.height)?;
 
@@ -744,26 +742,18 @@ impl HevcVdpauDecoder {
             bit_depth_chroma_minus8: self.sps.bit_depth_chroma_minus8 as u8,
             log2_max_pic_order_cnt_lsb_minus4: self.sps.log2_max_pic_order_cnt_lsb_minus4 as u8,
             sps_max_dec_pic_buffering_minus1: self.sps.sps_max_dec_pic_buffering_minus1 as u8,
-            log2_min_luma_coding_block_size_minus3: self
-                .sps
-                .log2_min_luma_coding_block_size_minus3
+            log2_min_luma_coding_block_size_minus3: self.sps.log2_min_luma_coding_block_size_minus3
                 as u8,
             log2_diff_max_min_luma_coding_block_size: self
                 .sps
                 .log2_diff_max_min_luma_coding_block_size
                 as u8,
-            log2_min_transform_block_size_minus2: self
-                .sps
-                .log2_min_transform_block_size_minus2
+            log2_min_transform_block_size_minus2: self.sps.log2_min_transform_block_size_minus2
                 as u8,
-            log2_diff_max_min_transform_block_size: self
-                .sps
-                .log2_diff_max_min_transform_block_size
+            log2_diff_max_min_transform_block_size: self.sps.log2_diff_max_min_transform_block_size
                 as u8,
-            max_transform_hierarchy_depth_inter: self.sps.max_transform_hierarchy_depth_inter
-                as u8,
-            max_transform_hierarchy_depth_intra: self.sps.max_transform_hierarchy_depth_intra
-                as u8,
+            max_transform_hierarchy_depth_inter: self.sps.max_transform_hierarchy_depth_inter as u8,
+            max_transform_hierarchy_depth_intra: self.sps.max_transform_hierarchy_depth_intra as u8,
             scaling_list_enabled_flag: self.sps.scaling_list_enabled_flag,
             scaling_list_4x4: [[16u8; 16]; 6],
             scaling_list_8x8: [[16u8; 64]; 6],
@@ -818,9 +808,7 @@ impl HevcVdpauDecoder {
             pps_loop_filter_across_slices_enabled_flag: self
                 .pps
                 .pps_loop_filter_across_slices_enabled_flag,
-            deblocking_filter_control_present_flag: self
-                .pps
-                .deblocking_filter_control_present_flag,
+            deblocking_filter_control_present_flag: self.pps.deblocking_filter_control_present_flag,
             deblocking_filter_override_enabled_flag: self
                 .pps
                 .deblocking_filter_override_enabled_flag,

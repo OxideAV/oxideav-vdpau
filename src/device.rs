@@ -16,7 +16,7 @@
 //! 4. `Drop for VdpDevice` calls `VdpDeviceDestroy`. `Drop for
 //!    Display` calls `XCloseDisplay`.
 
-use std::ffi::{CStr, CString, c_void};
+use std::ffi::{c_void, CStr, CString};
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::Arc;
@@ -25,12 +25,12 @@ use crate::sys::{
     self, FnVdpDecoderCreate, FnVdpDecoderDestroy, FnVdpDecoderQueryCapabilities,
     FnVdpDecoderRender, FnVdpDeviceDestroy, FnVdpGetApiVersion, FnVdpGetInformationString,
     FnVdpVideoSurfaceCreate, FnVdpVideoSurfaceDestroy, FnVdpVideoSurfaceGetBitsYCbCr,
-    VDP_FUNC_ID_DECODER_CREATE, VDP_FUNC_ID_DECODER_DESTROY, VDP_FUNC_ID_DECODER_QUERY_CAPABILITIES,
-    VDP_FUNC_ID_DECODER_RENDER, VDP_FUNC_ID_DEVICE_DESTROY, VDP_FUNC_ID_GET_API_VERSION,
-    VDP_FUNC_ID_GET_INFORMATION_STRING, VDP_FUNC_ID_VIDEO_SURFACE_CREATE,
-    VDP_FUNC_ID_VIDEO_SURFACE_DESTROY, VDP_FUNC_ID_VIDEO_SURFACE_GET_BITS_Y_CB_CR, VDP_STATUS_OK,
     VdpBitstreamBuffer, VdpChromaType, VdpDecoderProfile, VdpGetProcAddress, VdpStatus,
-    VdpYCbCrFormat, XDisplay,
+    VdpYCbCrFormat, XDisplay, VDP_FUNC_ID_DECODER_CREATE, VDP_FUNC_ID_DECODER_DESTROY,
+    VDP_FUNC_ID_DECODER_QUERY_CAPABILITIES, VDP_FUNC_ID_DECODER_RENDER, VDP_FUNC_ID_DEVICE_DESTROY,
+    VDP_FUNC_ID_GET_API_VERSION, VDP_FUNC_ID_GET_INFORMATION_STRING,
+    VDP_FUNC_ID_VIDEO_SURFACE_CREATE, VDP_FUNC_ID_VIDEO_SURFACE_DESTROY,
+    VDP_FUNC_ID_VIDEO_SURFACE_GET_BITS_Y_CB_CR, VDP_STATUS_OK,
 };
 
 // ─────────────────────────── Error ───────────────────────────────────────────
@@ -234,8 +234,18 @@ impl Dispatch {
         // SAFETY: see `fetch`.
         unsafe {
             Ok(Self {
-                device_destroy: fetch(device, get_proc, VDP_FUNC_ID_DEVICE_DESTROY, "DEVICE_DESTROY")?,
-                get_api_version: fetch(device, get_proc, VDP_FUNC_ID_GET_API_VERSION, "GET_API_VERSION")?,
+                device_destroy: fetch(
+                    device,
+                    get_proc,
+                    VDP_FUNC_ID_DEVICE_DESTROY,
+                    "DEVICE_DESTROY",
+                )?,
+                get_api_version: fetch(
+                    device,
+                    get_proc,
+                    VDP_FUNC_ID_GET_API_VERSION,
+                    "GET_API_VERSION",
+                )?,
                 get_information_string: fetch(
                     device,
                     get_proc,

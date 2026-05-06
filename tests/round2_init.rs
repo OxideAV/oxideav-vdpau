@@ -10,7 +10,7 @@
 
 #![cfg(target_os = "linux")]
 
-use oxideav_vdpau::{Display, VdpDevice, sys};
+use oxideav_vdpau::{sys, Display, VdpDevice};
 
 /// Open and immediately drop a `Display` from `$DISPLAY` (falling
 /// back to `:0`).

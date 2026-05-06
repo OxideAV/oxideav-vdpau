@@ -25,9 +25,9 @@
 #[cfg(feature = "registry")]
 use oxideav_core::{HwCodecCaps, HwDeviceInfo};
 
-use crate::Display;
 use crate::device::{VdpDevice, VdpError};
 use crate::sys;
+use crate::Display;
 
 /// One codec family we report. Each entry pins one representative
 /// VDPAU profile to feed `VdpDecoderQueryCapabilities` for the
@@ -330,7 +330,10 @@ mod tests {
 
     #[test]
     fn parse_driver_version_short_form_works() {
-        assert_eq!(parse_driver_version("Mesa VDPAU 1.0").as_deref(), Some("1.0"));
+        assert_eq!(
+            parse_driver_version("Mesa VDPAU 1.0").as_deref(),
+            Some("1.0")
+        );
     }
 
     #[test]

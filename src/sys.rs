@@ -206,8 +206,7 @@ pub type FnVdpVideoSurfaceCreate = unsafe extern "C" fn(
 ) -> VdpStatus;
 
 /// `VdpVideoSurfaceDestroy(surface)` — resolved via VdpGetProcAddress.
-pub type FnVdpVideoSurfaceDestroy =
-    unsafe extern "C" fn(surface: VdpVideoSurface) -> VdpStatus;
+pub type FnVdpVideoSurfaceDestroy = unsafe extern "C" fn(surface: VdpVideoSurface) -> VdpStatus;
 
 /// `VdpVideoSurfaceGetBitsYCbCr(surface, dest_format, dest_data, dest_pitches)`
 /// — resolved via VdpGetProcAddress. `dest_data` is an array of
@@ -670,8 +669,14 @@ mod tests {
         assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, slice_count), 8);
         assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, picture_structure), 12);
         assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, f_code), 23);
-        assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, intra_quantizer_matrix), 27);
-        assert_eq!(offset_of!(VdpPictureInfoMPEG1Or2, non_intra_quantizer_matrix), 91);
+        assert_eq!(
+            offset_of!(VdpPictureInfoMPEG1Or2, intra_quantizer_matrix),
+            27
+        );
+        assert_eq!(
+            offset_of!(VdpPictureInfoMPEG1Or2, non_intra_quantizer_matrix),
+            91
+        );
     }
 
     /// VDPAU vendor header `<vdpau/vdpau.h>` defines `VdpPictureInfoHEVC`
@@ -738,7 +743,10 @@ mod tests {
         assert_eq!(offset_of!(VdpPictureInfoHEVC, scaling_list_8x8), 119);
         assert_eq!(offset_of!(VdpPictureInfoHEVC, scaling_list_16x16), 503);
         assert_eq!(offset_of!(VdpPictureInfoHEVC, scaling_list_32x32), 887);
-        assert_eq!(offset_of!(VdpPictureInfoHEVC, num_short_term_ref_pic_sets), 1031);
+        assert_eq!(
+            offset_of!(VdpPictureInfoHEVC, num_short_term_ref_pic_sets),
+            1031
+        );
         assert_eq!(offset_of!(VdpPictureInfoHEVC, column_width_minus1), 1060);
         assert_eq!(offset_of!(VdpPictureInfoHEVC, row_height_minus1), 1100);
         assert_eq!(offset_of!(VdpPictureInfoHEVC, idr_pic_flag), 1154);
