@@ -289,6 +289,22 @@ pub struct Mpeg2VdpauDecoder {
 }
 
 impl Mpeg2VdpauDecoder {
+    /// Construct via the framework's [`oxideav_core::CodecParameters`].
+    /// Honours `params.device_index` (only `None` / `Some(0)` are valid
+    /// on a single-display VDPAU host — see
+    /// [`crate::validate_device_index`]) and otherwise delegates to
+    /// [`Self::new`].
+    #[cfg(feature = "registry")]
+    pub fn with_params(
+        device: &VdpDevice,
+        params: &oxideav_core::CodecParameters,
+        m2v: &[u8],
+    ) -> Result<Self, VdpError> {
+        let idx = params.device_index.unwrap_or(0);
+        crate::engine::validate_device_index(idx)?;
+        Self::new(device, m2v)
+    }
+
     pub fn new(device: &VdpDevice, m2v: &[u8]) -> Result<Self, VdpError> {
         let codes = find_start_codes(m2v);
 

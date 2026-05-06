@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Round 7
+
+- New helper `pub fn validate_device_index(index: u32) -> Result<(), VdpError>`
+  in the `engine` module (re-exported at the crate root). Validates a
+  caller-supplied device index against the live host enumeration: empty
+  `engine_info()` → `"no VDPAU device available"`; index past the last
+  enumerated device → `"vdpau: device_index N out of range (0..M)"`. VDPAU
+  exposes one device per X display, so on a single-display host only
+  index `0` passes.
+- Public decoder constructors honour `oxideav_core::CodecParameters::device_index`:
+  every decoder (`H264VdpauDecoder`, `HevcVdpauDecoder`, `Vp9VdpauDecoder`,
+  `Mpeg2VdpauDecoder`) now exposes a `with_params(&VdpDevice, &CodecParameters,
+  &[u8]) -> Result<Self, VdpError>` overload alongside the existing `new`.
+  It reads `params.device_index.unwrap_or(0)`, runs `validate_device_index`,
+  and delegates to `new`. `None` (default) and `Some(0)` are accepted; any
+  other value yields a clean error before any VDPAU FFI is touched. The
+  pre-existing `new(&VdpDevice, &[u8])` API is unchanged — `with_params`
+  is purely additive so existing callers don't churn.
+- Integration test `tests/round7_device_index.rs`: skip-friendly tests
+  that `validate_device_index(0)` is `Ok` and `validate_device_index(99)`
+  errors with `"out of range"`; that `H264VdpauDecoder::with_params`
+  constructs successfully with `device_index = None` and
+  `device_index = Some(0)`; and that `device_index = Some(7)` is
+  rejected before any bitstream parsing happens.
+
+Wiring `make_*` factories into `oxideav-core::CodecRegistry` is deferred
+to a follow-up round — the crate's `register()` body still doesn't push
+`CodecInfo` entries (decoders are exposed as direct structs). Once the
+registry side lands, the factories will read `device_index` from
+`CodecParameters` via the same helper.
+
 ### Added — Round 6
 
 - New `engine` module exposing `pub fn engine_info() -> Vec<HwDeviceInfo>`,

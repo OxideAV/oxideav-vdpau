@@ -69,6 +69,29 @@ pub struct H264VdpauDecoder {
 }
 
 impl H264VdpauDecoder {
+    /// Construct via the framework's [`oxideav_core::CodecParameters`].
+    /// Honours `params.device_index` (only `None` / `Some(0)` are valid
+    /// on a single-display VDPAU host — see
+    /// [`crate::validate_device_index`]) and otherwise delegates to
+    /// [`Self::new`].
+    ///
+    /// `annex_b` is the SPS+PPS+IDR fixture the decoder is configured
+    /// from. Most callers will source it from
+    /// `params.extradata` plus the first packet, but this constructor
+    /// stays explicit so the caller decides where the bitstream comes
+    /// from — VDPAU doesn't have an extradata-equivalent on its
+    /// `VdpDecoderCreate`.
+    #[cfg(feature = "registry")]
+    pub fn with_params(
+        device: &VdpDevice,
+        params: &oxideav_core::CodecParameters,
+        annex_b: &[u8],
+    ) -> Result<Self, VdpError> {
+        let idx = params.device_index.unwrap_or(0);
+        crate::engine::validate_device_index(idx)?;
+        Self::new(device, annex_b)
+    }
+
     /// Create a decoder configured from the SPS+PPS embedded in
     /// `annex_b`. Allocates the underlying `VdpDecoder` for H.264
     /// High at the SPS-derived dimensions.

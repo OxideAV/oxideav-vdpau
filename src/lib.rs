@@ -56,7 +56,7 @@ pub mod sys;
 pub mod vp9;
 
 pub use device::{DecoderCaps, Display, VdpDecoder, VdpDevice, VdpError, VdpVideoSurface};
-pub use engine::engine_info;
+pub use engine::{engine_info, validate_device_index};
 pub use h264::{DecodedFrame, H264VdpauDecoder};
 pub use hevc::HevcVdpauDecoder;
 pub use mpeg2::Mpeg2VdpauDecoder;

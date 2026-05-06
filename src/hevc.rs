@@ -632,6 +632,22 @@ pub struct HevcVdpauDecoder {
 }
 
 impl HevcVdpauDecoder {
+    /// Construct via the framework's [`oxideav_core::CodecParameters`].
+    /// Honours `params.device_index` (only `None` / `Some(0)` are valid
+    /// on a single-display VDPAU host — see
+    /// [`crate::validate_device_index`]) and otherwise delegates to
+    /// [`Self::new`].
+    #[cfg(feature = "registry")]
+    pub fn with_params(
+        device: &VdpDevice,
+        params: &oxideav_core::CodecParameters,
+        annex_b: &[u8],
+    ) -> Result<Self, VdpError> {
+        let idx = params.device_index.unwrap_or(0);
+        crate::engine::validate_device_index(idx)?;
+        Self::new(device, annex_b)
+    }
+
     pub fn new(device: &VdpDevice, annex_b: &[u8]) -> Result<Self, VdpError> {
         let nals = split_nal_units(annex_b);
         let vps_nal = nals

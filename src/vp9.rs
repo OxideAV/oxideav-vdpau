@@ -457,6 +457,22 @@ pub struct Vp9VdpauDecoder {
 }
 
 impl Vp9VdpauDecoder {
+    /// Construct via the framework's [`oxideav_core::CodecParameters`].
+    /// Honours `params.device_index` (only `None` / `Some(0)` are valid
+    /// on a single-display VDPAU host — see
+    /// [`crate::validate_device_index`]) and otherwise delegates to
+    /// [`Self::new`].
+    #[cfg(feature = "registry")]
+    pub fn with_params(
+        device: &VdpDevice,
+        params: &oxideav_core::CodecParameters,
+        ivf: &[u8],
+    ) -> Result<Self, VdpError> {
+        let idx = params.device_index.unwrap_or(0);
+        crate::engine::validate_device_index(idx)?;
+        Self::new(device, ivf)
+    }
+
     /// Parse the IVF wrapper and create a decoder sized for the
     /// embedded keyframe.
     pub fn new(device: &VdpDevice, ivf: &[u8]) -> Result<Self, VdpError> {

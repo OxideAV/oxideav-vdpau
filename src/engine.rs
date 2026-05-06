@@ -26,7 +26,7 @@
 use oxideav_core::{HwCodecCaps, HwDeviceInfo};
 
 use crate::Display;
-use crate::device::VdpDevice;
+use crate::device::{VdpDevice, VdpError};
 use crate::sys;
 
 /// One codec family we report. Each entry pins one representative
@@ -213,6 +213,49 @@ pub fn engine_info() -> Vec<HwDeviceInfo> {
 /// `HwDeviceInfo` so we expose nothing.
 #[cfg(not(feature = "registry"))]
 pub fn engine_info() {}
+
+/// Validate that `index` is within range for the current host's VDPAU
+/// device enumeration.
+///
+/// VDPAU exposes exactly one device per X display (`vdp_device_create_x11`
+/// returns a single `VdpDevice` regardless of the number of physical
+/// GPUs the driver sits on), so on a single-display box this means only
+/// `0` is valid. The check still goes through [`engine_info`] so that
+/// a future multi-display backend (or the no-VDPAU fallback) returns the
+/// right error consistently.
+///
+/// Returns `Err` when:
+///   - no VDPAU device is reachable on this host, or
+///   - `index` is past the last enumerated device.
+///
+/// Hardware decoder factories should call this with
+/// `params.device_index.unwrap_or(0)` before attempting to bind to a
+/// device, so callers that pass a stale or made-up index get a clean
+/// error instead of a confusing downstream `VdpDecoderCreate` failure.
+#[cfg(feature = "registry")]
+pub fn validate_device_index(index: u32) -> Result<(), VdpError> {
+    let devices = engine_info();
+    if devices.is_empty() {
+        return Err(VdpError::other("no VDPAU device available"));
+    }
+    if (index as usize) >= devices.len() {
+        return Err(VdpError::other(format!(
+            "vdpau: device_index {index} out of range (0..{})",
+            devices.len()
+        )));
+    }
+    Ok(())
+}
+
+/// Stub matching [`validate_device_index`] for builds without the
+/// `registry` feature: the helper has nothing to validate against (no
+/// `engine_info`), so it always reports the index as accepted. The
+/// non-registry crate is the raw FFI bridge — callers there don't go
+/// through `CodecParameters` and shouldn't be exercising this path.
+#[cfg(not(feature = "registry"))]
+pub fn validate_device_index(_index: u32) -> Result<(), VdpError> {
+    Ok(())
+}
 
 /// Walk `CODEC_QUERIES`, query the representative profile for the
 /// top-level numbers, then loop through the fan-out profile list to
