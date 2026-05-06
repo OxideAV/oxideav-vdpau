@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/OxideAV/oxideav-vdpau/compare/v0.0.1...v0.0.2) - 2026-05-06
+
+### Other
+
+- apply rustfmt layout + Default::default field-assign + div_ceil + redundant-cast
+- skip frameworks_load + vtable_resolves on hosts without the driver
+- validate CodecParameters::device_index against engine_info() count
+- implement engine_info() — enumerate per-codec VDPAU decoder caps
+
 ### Added — Round 7
 
 - New helper `pub fn validate_device_index(index: u32) -> Result<(), VdpError>`
