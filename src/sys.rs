@@ -749,10 +749,17 @@ mod tests {
     }
 
     /// Smoke test: libvdpau.so.1 + libX11.so.6 on this machine load
-    /// cleanly.
+    /// cleanly. Skip-friendly — CI runners without libvdpau / libX11
+    /// `eprintln!` and return rather than fail.
     #[test]
     fn frameworks_load() {
-        let fw = framework().expect("framework load");
+        let fw = match framework() {
+            Ok(fw) => fw,
+            Err(e) => {
+                eprintln!("oxideav-vdpau: framework unavailable, skipping: {e}");
+                return;
+            }
+        };
         // Confirm the bootstrap entry point is present.
         let _: libloading::Symbol<unsafe extern "C" fn()> = unsafe {
             fw.libvdpau
@@ -766,9 +773,15 @@ mod tests {
         };
     }
 
-    /// Verify the vtable resolves all symbols.
+    /// Verify the vtable resolves all symbols. Skip-friendly when the
+    /// framework can't be loaded (e.g. CI runner without libvdpau).
     #[test]
     fn vtable_resolves() {
-        vtable().expect("vtable load");
+        match vtable() {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("oxideav-vdpau: vtable unavailable, skipping: {e}");
+            }
+        }
     }
 }
