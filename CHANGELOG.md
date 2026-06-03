@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Round 8
+
+- `register()` now pushes four `CodecInfo` entries into
+  `RuntimeContext::codecs` — one each for `h264`, `hevc`, `vp9`, and
+  `mpeg2video`. Every entry advertises:
+    - `CodecCapabilities::video("<codec>_vdpau")` with `with_decode()`,
+      `with_lossy(true)`, `with_hardware(true)`, `with_priority(15)`
+      (slightly higher / worse than VA-API's 10 because VA-API has the
+      better Linux driver story today), and `with_max_size(8192, 8192)`
+      as a generous pre-filter bound — the per-profile live maxima
+      still come from `engine_info()` on demand;
+    - Container tags so the registry resolver picks the VDPAU bridge
+      up from FourCC and Matroska codec-id lookups — H.264 (`H264` /
+      `h264` / `AVC1` / `avc1` / `X264` / `V_MPEG4/ISO/AVC`), HEVC
+      (`hvc1` / `hev1` / `HEVC` / `H265` / `V_MPEGH/ISO/HEVC`), VP9
+      (`VP90` / `vp09` / `V_VP9`), MPEG-2 (`MPG2` / `mpg2` / `M2V ` /
+      `V_MPEG2`);
+    - `with_engine_id("vdpau")` + `with_engine_probe(engine_info)` so
+      `oxideav info` groups the rows by VDPAU device and the CLI can
+      dedupe the probe call by engine id.
+- Framework-load pre-flight: if `libvdpau.so.1` or `libX11.so.6` cannot
+  be loaded, `register()` logs once and returns without pushing any
+  rows — pure-Rust fallbacks then remain the only resolution candidates.
+- `decoder_factory` is intentionally still unset on every row: the
+  existing direct constructors (`H264VdpauDecoder::with_params`,
+  `HevcVdpauDecoder::with_params`, `Vp9VdpauDecoder::with_params`,
+  `Mpeg2VdpauDecoder::with_params`) honour
+  `CodecParameters::device_index`, but adapting them into streaming
+  `dyn oxideav_core::Decoder` impls (`send_packet` / `receive_frame`
+  with cached SPS-PPS / per-codec parser state) lands per-codec in
+  follow-up rounds rather than as one omnibus drop. The follow-up will
+  read `device_index` from `CodecParameters` via
+  `validate_device_index`, then thread through the matching
+  `with_params` constructor.
+- Integration test `tests/round8_codec_registry.rs`: skip-friendly
+  tests that confirm each of the four codec ids exposes exactly one
+  `*_vdpau` implementation row, that the capability flags on the
+  H.264 row match the registration (decode/hw/priority/max_size), and
+  that every row carries the expected `<codec>_vdpau` implementation
+  suffix. All tests skip cleanly with a diagnostic `eprintln!` when
+  the framework load fails (no driver on the runner).
+
 ## [0.0.2](https://github.com/OxideAV/oxideav-vdpau/compare/v0.0.1...v0.0.2) - 2026-05-06
 
 ### Other
