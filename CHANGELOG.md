@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Round 9
+
+- Typed `Profile` enum in a new `profile` module — one variant per
+  `sys::VDP_DECODER_PROFILE_*` constant the crate knows about (H.264 ×
+  7, HEVC × 4, VP9 × 4, AV1 × 3, MPEG-2 × 2, VC-1 × 3, MPEG-4 Part 2
+  × 2 = 25 total). `Profile::as_raw`/`from_raw` round-trips with the
+  raw `VdpDecoderProfile` (`u32`) form so FFI calls stay unchanged;
+  `Profile::from_raw` returns `None` for unknown values rather than
+  panicking so vendor-extension or future-spec profile numbers fall
+  through cleanly. `Profile::codec_id` returns the framework family
+  string (`"h264"`, `"hevc"`, …) and `Profile::label` the
+  human-facing suffix (`"High"`, `"Main10"`, `"0"`, `"Pro"`) — both
+  match the strings the engine probe reports in `HwCodecCaps`. Exposed
+  as `oxideav_vdpau::Profile` for direct consumer reach.
+- `engine.rs`'s `CODEC_QUERIES` table now stores typed `Profile`
+  values rather than `(VdpDecoderProfile, &'static str)` tuples. The
+  string labels reported into `HwCodecCaps::profiles` now come from
+  `Profile::label()` — one source of truth — instead of being
+  inlined alongside the raw constants.
+- `tests/round9_profile.rs` integration test: confirms `Profile` is
+  reachable from the crate root, every variant round-trips, every
+  variant belongs to one of the seven engine-probe codec families
+  (`h264` / `hevc` / `vp9` / `mpeg2` / `vc1` / `mpeg4` / `av1`), and
+  the H.264/HEVC/VP9/AV1 label sets match the engine-probe enumerations
+  exactly. Eight unit tests inside `profile.rs` cover the round-trip,
+  unknown-raw, family-grouping, label, and `Profile::ALL` density
+  invariants.
+
 ### Added — Round 8
 
 - `register()` now pushes four `CodecInfo` entries into

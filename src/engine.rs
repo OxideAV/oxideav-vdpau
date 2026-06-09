@@ -26,101 +26,83 @@
 use oxideav_core::{HwCodecCaps, HwDeviceInfo};
 
 use crate::device::{VdpDevice, VdpError};
-use crate::sys;
+use crate::profile::Profile;
 use crate::Display;
 
 /// One codec family we report. Each entry pins one representative
 /// VDPAU profile to feed `VdpDecoderQueryCapabilities` for the
 /// `max_width` / `max_height` / `max_macroblocks` numbers, plus the
 /// fan-out list of profiles to enumerate into `HwCodecCaps::profiles`.
+///
+/// The labels reported into `HwCodecCaps::profiles` come from
+/// [`Profile::label`] — a single source of truth shared with the typed
+/// surface (see [`crate::profile`]).
 struct CodecQuery {
     codec: &'static str,
     /// Representative profile — its caps drive `max_width`,
     /// `max_height`, `max_level`, `max_macroblocks`, and the top-level
     /// `decode` flag.
-    representative: sys::VdpDecoderProfile,
-    /// `(profile_constant, profile_label)` pairs. Profiles that the
-    /// driver advertises as supported land in `HwCodecCaps::profiles`.
-    /// Profiles the driver rejects are silently dropped.
-    profiles: &'static [(sys::VdpDecoderProfile, &'static str)],
+    representative: Profile,
+    /// Profiles to fan out into `VdpDecoderQueryCapabilities`. Profiles
+    /// the driver advertises as supported land in
+    /// `HwCodecCaps::profiles` keyed by [`Profile::label`]; profiles the
+    /// driver rejects are silently dropped.
+    profiles: &'static [Profile],
 }
 
 const CODEC_QUERIES: &[CodecQuery] = &[
     CodecQuery {
         codec: "h264",
-        representative: sys::VDP_DECODER_PROFILE_H264_HIGH,
+        representative: Profile::H264High,
         profiles: &[
-            (sys::VDP_DECODER_PROFILE_H264_BASELINE, "Baseline"),
-            (sys::VDP_DECODER_PROFILE_H264_MAIN, "Main"),
-            (sys::VDP_DECODER_PROFILE_H264_HIGH, "High"),
-            (
-                sys::VDP_DECODER_PROFILE_H264_CONSTRAINED_BASELINE,
-                "ConstrainedBaseline",
-            ),
-            (sys::VDP_DECODER_PROFILE_H264_EXTENDED, "Extended"),
-            (
-                sys::VDP_DECODER_PROFILE_H264_PROGRESSIVE_HIGH,
-                "ProgressiveHigh",
-            ),
-            (
-                sys::VDP_DECODER_PROFILE_H264_CONSTRAINED_HIGH,
-                "ConstrainedHigh",
-            ),
+            Profile::H264Baseline,
+            Profile::H264Main,
+            Profile::H264High,
+            Profile::H264ConstrainedBaseline,
+            Profile::H264Extended,
+            Profile::H264ProgressiveHigh,
+            Profile::H264ConstrainedHigh,
         ],
     },
     CodecQuery {
         codec: "hevc",
-        representative: sys::VDP_DECODER_PROFILE_HEVC_MAIN,
+        representative: Profile::HevcMain,
         profiles: &[
-            (sys::VDP_DECODER_PROFILE_HEVC_MAIN, "Main"),
-            (sys::VDP_DECODER_PROFILE_HEVC_MAIN_10, "Main10"),
-            (sys::VDP_DECODER_PROFILE_HEVC_MAIN_STILL, "MainStill"),
-            (sys::VDP_DECODER_PROFILE_HEVC_MAIN_12, "Main12"),
+            Profile::HevcMain,
+            Profile::HevcMain10,
+            Profile::HevcMainStill,
+            Profile::HevcMain12,
         ],
     },
     CodecQuery {
         codec: "vp9",
-        representative: sys::VDP_DECODER_PROFILE_VP9_PROFILE_0,
+        representative: Profile::Vp9Profile0,
         profiles: &[
-            (sys::VDP_DECODER_PROFILE_VP9_PROFILE_0, "0"),
-            (sys::VDP_DECODER_PROFILE_VP9_PROFILE_1, "1"),
-            (sys::VDP_DECODER_PROFILE_VP9_PROFILE_2, "2"),
-            (sys::VDP_DECODER_PROFILE_VP9_PROFILE_3, "3"),
+            Profile::Vp9Profile0,
+            Profile::Vp9Profile1,
+            Profile::Vp9Profile2,
+            Profile::Vp9Profile3,
         ],
     },
     CodecQuery {
         codec: "av1",
-        representative: sys::VDP_DECODER_PROFILE_AV1_MAIN,
-        profiles: &[
-            (sys::VDP_DECODER_PROFILE_AV1_MAIN, "Main"),
-            (sys::VDP_DECODER_PROFILE_AV1_HIGH, "High"),
-            (sys::VDP_DECODER_PROFILE_AV1_PROFESSIONAL, "Pro"),
-        ],
+        representative: Profile::Av1Main,
+        profiles: &[Profile::Av1Main, Profile::Av1High, Profile::Av1Professional],
     },
     CodecQuery {
         codec: "mpeg2",
-        representative: sys::VDP_DECODER_PROFILE_MPEG2_MAIN,
-        profiles: &[
-            (sys::VDP_DECODER_PROFILE_MPEG2_SIMPLE, "Simple"),
-            (sys::VDP_DECODER_PROFILE_MPEG2_MAIN, "Main"),
-        ],
+        representative: Profile::Mpeg2Main,
+        profiles: &[Profile::Mpeg2Simple, Profile::Mpeg2Main],
     },
     CodecQuery {
         codec: "vc1",
-        representative: sys::VDP_DECODER_PROFILE_VC1_ADVANCED,
-        profiles: &[
-            (sys::VDP_DECODER_PROFILE_VC1_SIMPLE, "Simple"),
-            (sys::VDP_DECODER_PROFILE_VC1_MAIN, "Main"),
-            (sys::VDP_DECODER_PROFILE_VC1_ADVANCED, "Advanced"),
-        ],
+        representative: Profile::Vc1Advanced,
+        profiles: &[Profile::Vc1Simple, Profile::Vc1Main, Profile::Vc1Advanced],
     },
     CodecQuery {
         codec: "mpeg4",
-        representative: sys::VDP_DECODER_PROFILE_MPEG4_PART2_ASP,
-        profiles: &[
-            (sys::VDP_DECODER_PROFILE_MPEG4_PART2_SP, "SP"),
-            (sys::VDP_DECODER_PROFILE_MPEG4_PART2_ASP, "ASP"),
-        ],
+        representative: Profile::Mpeg4Part2Asp,
+        profiles: &[Profile::Mpeg4Part2Sp, Profile::Mpeg4Part2Asp],
     },
 ];
 
@@ -265,14 +247,14 @@ pub fn validate_device_index(_index: u32) -> Result<(), VdpError> {
 fn build_codec_caps(device: &VdpDevice) -> Vec<HwCodecCaps> {
     let mut out = Vec::with_capacity(CODEC_QUERIES.len());
     for q in CODEC_QUERIES {
-        let rep_caps = match device.decoder_caps(q.representative) {
+        let rep_caps = match device.decoder_caps(q.representative.as_raw()) {
             Ok(c) => c,
             Err(_) => continue,
         };
         let mut profiles: Vec<String> = Vec::new();
-        for (p, label) in q.profiles {
-            match device.decoder_caps(*p) {
-                Ok(c) if c.supported => profiles.push((*label).to_string()),
+        for p in q.profiles {
+            match device.decoder_caps(p.as_raw()) {
+                Ok(c) if c.supported => profiles.push(p.label().to_string()),
                 _ => {}
             }
         }
