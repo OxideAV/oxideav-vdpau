@@ -10,7 +10,7 @@ This crate is a **thin runtime-loaded bridge** — no compile-time link dependen
 
 ## Programming model
 
-VDPAU is unusual: only `vdp_device_create_x11` is exported as a normal symbol. **Every other VDPAU function** is reached via the `VdpGetProcAddress` function pointer that `vdp_device_create_x11` writes back as part of device creation, indexed by `VdpFuncId` constants. So this crate's vtable is intentionally small — a single bootstrap symbol — and Round 2 will add the post-create dispatch table generated from `VdpGetProcAddress`.
+VDPAU is unusual: only `vdp_device_create_x11` is exported as a normal symbol. **Every other VDPAU function** is reached via the `VdpGetProcAddress` function pointer that `vdp_device_create_x11` writes back as part of device creation, indexed by `VdpFuncId` constants. So this crate's vtable is intentionally small — a single bootstrap symbol — and the post-create dispatch table is resolved through `VdpGetProcAddress` at device-creation time.
 
 ## Fallback behaviour
 
@@ -47,15 +47,42 @@ Users who want to force the pure-Rust path globally can pass `--no-hwaccel` to t
 
 Encode is intentionally absent — VDPAU has no encode counterpart. Encoders go through NVENC (`oxideav-nvidia`) or VA-API (`oxideav-vaapi`).
 
-Round 2 (this commit): the bridge now opens an X server connection (libX11 dlopen — `XOpenDisplay`/`XCloseDisplay`/`XDefaultScreen`), creates a `VdpDevice` via `vdp_device_create_x11`, and resolves the post-bootstrap dispatch table (`VdpDeviceDestroy`, `VdpGetApiVersion`, `VdpGetInformationString`, `VdpDecoderQueryCapabilities`) through the `VdpGetProcAddress` pointer the create call writes back. Safe wrappers — `Display`, `VdpDevice`, `DecoderCaps`, `VdpError` — own the lifecycle (Drop calls `VdpDeviceDestroy` and `XCloseDisplay`). Profile/function-ID constants are exposed in `sys` for callers that want to query specific codecs (`sys::VDP_DECODER_PROFILE_H264_HIGH`, `_HEVC_MAIN`, `_VP9_PROFILE_0`, `_AV1_MAIN`, …). Round 3: codec factories — H.264 + HEVC decode through `VdpDecoderCreate` / `VdpDecoderRender`.
+## Status
 
-Round 8: `register()` now pushes four `CodecInfo` entries into `RuntimeContext::codecs` — one each for `h264`, `hevc`, `vp9`, and `mpeg2video`. Every entry sets `with_engine_id("vdpau")` + `with_engine_probe(engine_info)`, carries the matching container-tag set (FourCC + Matroska codec id), and advertises `decode = true`, `hardware_accelerated = true`, `priority = 15`, `max_size = 8192 x 8192`. The framework load is still gated up front, so on a host without `libvdpau.so.1` or `libX11.so.6` `register()` logs once and skips registration — the registry then has no `*_vdpau` rows and the pure-Rust fallbacks remain the only candidates. `decoder_factory` is still unset on every row: adapting the existing direct constructors (`H264VdpauDecoder::with_params`, etc.) into streaming `dyn oxideav_core::Decoder` impls (`send_packet` / `receive_frame` / cached SPS-PPS / per-codec state) lands per-codec in follow-up rounds.
+The bridge opens an X server connection (libX11 dlopen —
+`XOpenDisplay` / `XCloseDisplay` / `XDefaultScreen`), creates a
+`VdpDevice` via `vdp_device_create_x11`, and resolves the
+post-bootstrap dispatch table (`VdpDeviceDestroy`, `VdpGetApiVersion`,
+`VdpGetInformationString`, `VdpDecoderQueryCapabilities`,
+`VdpDecoderCreate` / `VdpDecoderRender`) through the `VdpGetProcAddress`
+pointer the create call writes back. Safe wrappers — `Display`,
+`VdpDevice`, `DecoderCaps`, `VdpError` — own the lifecycle (Drop calls
+`VdpDeviceDestroy` and `XCloseDisplay`).
 
-Round 9 (this commit): typed `Profile` enum exposed at the crate root (`oxideav_vdpau::Profile`). One variant per `sys::VDP_DECODER_PROFILE_*` constant (25 total — H.264 × 7, HEVC × 4, VP9 × 4, AV1 × 3, MPEG-2 × 2, VC-1 × 3, MPEG-4 Part 2 × 2); `Profile::as_raw` / `Profile::from_raw` round-trip with the raw `VdpDecoderProfile` (`u32`) form so FFI calls stay unchanged. `Profile::codec_id` returns the framework family string (`"h264"`, `"hevc"`, …) and `Profile::label` the human-facing suffix (`"High"`, `"Main10"`, `"0"`, `"Pro"`). The engine probe's `CODEC_QUERIES` table now stores typed `Profile` values rather than `(VdpDecoderProfile, &'static str)` tuples — the labels reported into `HwCodecCaps::profiles` come from `Profile::label()`, one source of truth. Eight unit tests cover the round-trip / unknown-raw / family-grouping / label / `Profile::ALL` density invariants; integration test `tests/round9_profile.rs` pins public reachability and the per-family label set.
+- A typed `Profile` enum (`oxideav_vdpau::Profile`) has one variant per
+  `sys::VDP_DECODER_PROFILE_*` constant (H.264, HEVC, VP9, AV1,
+  MPEG-2, VC-1, MPEG-4 Part 2). `Profile::as_raw` / `from_raw`
+  round-trip the raw `VdpDecoderProfile` (`u32`) form so FFI calls stay
+  unchanged; `Profile::codec_id` returns the framework family string
+  and `Profile::label` the human-facing suffix. Profile / function-ID
+  constants are also exposed directly in `sys`.
+- `register()` pushes `CodecInfo` entries for `h264`, `hevc`, `vp9`,
+  and `mpeg2video`, each with `with_engine_id("vdpau")` +
+  `with_engine_probe(engine_info)`, the matching container-tag set,
+  and `decode = true`, `hardware_accelerated = true`, `priority = 15`,
+  `max_size = 8192 × 8192`. The framework load is gated up front: on a
+  host without `libvdpau.so.1` or `libX11.so.6`, `register()` logs once
+  and skips registration, leaving the pure-Rust fallbacks as the only
+  candidates.
+
+Not yet wired: the streaming `dyn oxideav_core::Decoder`
+(`send_packet` / `receive_frame` / cached SPS-PPS / per-codec state)
+adapters around the direct VDPAU decode constructors — `decoder_factory`
+is currently unset on the registered rows.
 
 ## Workspace policy
 
-Calling a system OS / driver API via FFI is the same shape as calling `libc::malloc` — it's the platform, not a copied algorithm. The workspace's clean-room rule (no embedding source from libvpx, libwebp, libjxl, etc.) does not apply to this crate.
+Calling a system OS / driver API via FFI is the same shape as calling `libc::malloc` — it's the platform, not a copied algorithm. The workspace's clean-room rule (no embedding third-party codec library source) does not apply to this crate.
 
 ## License
 
