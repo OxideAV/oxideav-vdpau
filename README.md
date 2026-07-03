@@ -1,5 +1,7 @@
 # oxideav-vdpau
 
+[![CI](https://github.com/OxideAV/oxideav-vdpau/actions/workflows/ci.yml/badge.svg)](https://github.com/OxideAV/oxideav-vdpau/actions/workflows/ci.yml) [![crates.io](https://img.shields.io/crates/v/oxideav-vdpau.svg)](https://crates.io/crates/oxideav-vdpau) [![docs.rs](https://docs.rs/oxideav-vdpau/badge.svg)](https://docs.rs/oxideav-vdpau) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Linux VDPAU hardware decode bridge for the [oxideav](https://github.com/OxideAV/oxideav) framework.
 
 ## Why a bridge crate?
