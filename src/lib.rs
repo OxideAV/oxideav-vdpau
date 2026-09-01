@@ -61,6 +61,8 @@ pub mod h264;
 pub mod hevc;
 pub mod mpeg2;
 pub mod profile;
+// internal — raw dlopen FFI plumbing; not part of the stable API
+#[doc(hidden)]
 pub mod sys;
 pub mod vp9;
 
