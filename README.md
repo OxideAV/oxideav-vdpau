@@ -19,7 +19,7 @@ VDPAU is unusual: only `vdp_device_create_x11` is exported as a normal symbol. *
 Two distinct failure paths fall back automatically to the pure-Rust codec:
 
 1. **Load failure** — `libvdpau.so.1` not installed, or no X server reachable (`vdp_device_create_x11` requires an `XDisplay`). `register()` logs and returns without registering, so the SW codec is the only candidate at dispatch.
-2. **Init failure** — `vdp_device_create_x11` returns a non-zero `VdpStatus`, or the requested codec / profile / resolution exceeds what the driver advertises via `vdp_decoder_query_capabilities`. The factory returns `Err`; the registry's `make_decoder_with` retries the next-priority impl.
+2. **Init failure** — `vdp_device_create_x11` returns a non-zero `VdpStatus`, or the requested codec / profile / resolution exceeds what the driver advertises via `vdp_decoder_query_capabilities`. The factory returns `Err`; `oxideav_pipeline::make_decoder_with` (the selection layer the CLI and executor use) retries the next-priority impl.
 
 Pipelines that **require** hardware can opt out of the SW fallback by setting `CodecPreferences { require_hardware: true, .. }`.
 
