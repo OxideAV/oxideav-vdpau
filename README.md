@@ -25,7 +25,7 @@ Pipelines that **require** hardware can opt out of the SW fallback by setting `C
 
 ## Platform gating
 
-The whole crate is `#![cfg(target_os = "linux")]`. On macOS / Windows it compiles to an empty rlib; the umbrella `oxideav` crate gates the `register` call behind the same cfg. (Solaris / FreeBSD also ship libvdpau but are not yet supported.)
+The whole crate is `#![cfg(target_os = "linux")]`. On macOS / Windows it compiles to an empty rlib; `oxideav-meta` only pulls the crate in (and so only calls its `register`) under the same cfg. (Solaris / FreeBSD also ship libvdpau but are not yet supported.)
 
 ## Priority
 
