@@ -76,7 +76,7 @@ dependencies = [
 
 [[package]]
 name = "oxideav-vdpau"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "libloading",
  "linkme",
