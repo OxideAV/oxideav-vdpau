@@ -21,13 +21,14 @@
 
 use std::ffi::c_void;
 
-use oxideav_bitstream::h264::{parse_idr_only, H264Pps, H264Sps};
 use oxideav_bitstream::BitstreamError;
+use oxideav_bitstream::h264::{H264Pps, H264Sps, parse_idr_only};
 
 use crate::device::{VdpDecoder, VdpDevice, VdpError, VdpVideoSurface};
 use crate::sys::{
-    VdpBitstreamBuffer, VdpPictureInfoH264, VdpReferenceFrameH264, VDP_BITSTREAM_BUFFER_VERSION,
-    VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_H264_HIGH, VDP_INVALID_HANDLE, VDP_YCBCR_FORMAT_NV12,
+    VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_H264_HIGH,
+    VDP_INVALID_HANDLE, VDP_YCBCR_FORMAT_NV12, VdpBitstreamBuffer, VdpPictureInfoH264,
+    VdpReferenceFrameH264,
 };
 
 // ─────────────────────────── Error conversion ────────────────────────────────

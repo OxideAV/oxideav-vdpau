@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- edition 2024, MSRV 1.95.
+
 ### Added — Round 9
 
 - Typed `Profile` enum in a new `profile` module — one variant per

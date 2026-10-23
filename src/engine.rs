@@ -25,9 +25,13 @@
 #[cfg(feature = "registry")]
 use oxideav_core::{HwCodecCaps, HwDeviceInfo};
 
-use crate::device::{VdpDevice, VdpError};
-use crate::profile::Profile;
+#[cfg(feature = "registry")]
 use crate::Display;
+#[cfg(feature = "registry")]
+use crate::device::VdpDevice;
+use crate::device::VdpError;
+#[cfg(feature = "registry")]
+use crate::profile::Profile;
 
 /// One codec family we report. Each entry pins one representative
 /// VDPAU profile to feed `VdpDecoderQueryCapabilities` for the
@@ -37,6 +41,7 @@ use crate::Display;
 /// The labels reported into `HwCodecCaps::profiles` come from
 /// [`Profile::label`] — a single source of truth shared with the typed
 /// surface (see [`crate::profile`]).
+#[cfg(feature = "registry")]
 struct CodecQuery {
     codec: &'static str,
     /// Representative profile — its caps drive `max_width`,
@@ -50,6 +55,7 @@ struct CodecQuery {
     profiles: &'static [Profile],
 }
 
+#[cfg(feature = "registry")]
 const CODEC_QUERIES: &[CodecQuery] = &[
     CodecQuery {
         codec: "h264",
@@ -112,6 +118,7 @@ const CODEC_QUERIES: &[CodecQuery] = &[
 /// 03:11:42 UTC 2025"`); on multi-line banners we keep just the first
 /// line and trim trailing whitespace + multiple internal spaces stay
 /// untouched (the banner double-space is informational and harmless).
+#[cfg(any(feature = "registry", test))]
 fn parse_device_name(info: &str) -> String {
     info.lines().next().unwrap_or("").trim().to_string()
 }
@@ -120,6 +127,7 @@ fn parse_device_name(info: &str) -> String {
 /// driver version like `580.95.05`; we accept any whitespace-separated
 /// token that starts with a digit and contains at least one `.` and
 /// only digits / dots. Returns `None` if no such token is present.
+#[cfg(any(feature = "registry", test))]
 fn parse_driver_version(info: &str) -> Option<String> {
     info.split_whitespace().find_map(|tok| {
         match tok.as_bytes().first() {

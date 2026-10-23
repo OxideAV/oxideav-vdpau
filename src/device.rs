@@ -16,7 +16,7 @@
 //! 4. `Drop for VdpDevice` calls `VdpDeviceDestroy`. `Drop for
 //!    Display` calls `XCloseDisplay`.
 
-use std::ffi::{c_void, CStr, CString};
+use std::ffi::{CStr, CString, c_void};
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::Arc;
@@ -25,12 +25,12 @@ use crate::sys::{
     self, FnVdpDecoderCreate, FnVdpDecoderDestroy, FnVdpDecoderQueryCapabilities,
     FnVdpDecoderRender, FnVdpDeviceDestroy, FnVdpGetApiVersion, FnVdpGetInformationString,
     FnVdpVideoSurfaceCreate, FnVdpVideoSurfaceDestroy, FnVdpVideoSurfaceGetBitsYCbCr,
-    VdpBitstreamBuffer, VdpChromaType, VdpDecoderProfile, VdpGetProcAddress, VdpStatus,
-    VdpYCbCrFormat, XDisplay, VDP_FUNC_ID_DECODER_CREATE, VDP_FUNC_ID_DECODER_DESTROY,
+    VDP_FUNC_ID_DECODER_CREATE, VDP_FUNC_ID_DECODER_DESTROY,
     VDP_FUNC_ID_DECODER_QUERY_CAPABILITIES, VDP_FUNC_ID_DECODER_RENDER, VDP_FUNC_ID_DEVICE_DESTROY,
     VDP_FUNC_ID_GET_API_VERSION, VDP_FUNC_ID_GET_INFORMATION_STRING,
     VDP_FUNC_ID_VIDEO_SURFACE_CREATE, VDP_FUNC_ID_VIDEO_SURFACE_DESTROY,
-    VDP_FUNC_ID_VIDEO_SURFACE_GET_BITS_Y_CB_CR, VDP_STATUS_OK,
+    VDP_FUNC_ID_VIDEO_SURFACE_GET_BITS_Y_CB_CR, VDP_STATUS_OK, VdpBitstreamBuffer, VdpChromaType,
+    VdpDecoderProfile, VdpGetProcAddress, VdpStatus, VdpYCbCrFormat, XDisplay,
 };
 
 // ─────────────────────────── Error ───────────────────────────────────────────

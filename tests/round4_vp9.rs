@@ -6,7 +6,7 @@
 
 #![cfg(target_os = "linux")]
 
-use oxideav_vdpau::{sys, Display, VdpDevice, Vp9VdpauDecoder};
+use oxideav_vdpau::{Display, VdpDevice, Vp9VdpauDecoder, sys};
 
 fn open_device(name: &str) -> Option<VdpDevice> {
     let display = match Display::open_from_env() {

@@ -34,10 +34,10 @@
 use std::ffi::c_void;
 
 use crate::device::{VdpDecoder, VdpDevice, VdpError};
-use crate::h264::{get_bits_nv12_as_i420, DecodedFrame};
+use crate::h264::{DecodedFrame, get_bits_nv12_as_i420};
 use crate::sys::{
-    VdpBitstreamBuffer, VdpPictureInfoHEVC, VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420,
-    VDP_DECODER_PROFILE_HEVC_MAIN, VDP_INVALID_HANDLE,
+    VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_HEVC_MAIN,
+    VDP_INVALID_HANDLE, VdpBitstreamBuffer, VdpPictureInfoHEVC,
 };
 
 // ─────────────────────────── Annex-B framing (HEVC) ─────────────────────────

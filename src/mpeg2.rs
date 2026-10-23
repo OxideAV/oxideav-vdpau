@@ -28,10 +28,10 @@
 use std::ffi::c_void;
 
 use crate::device::{VdpDecoder, VdpDevice, VdpError};
-use crate::h264::{get_bits_nv12_as_i420, DecodedFrame};
+use crate::h264::{DecodedFrame, get_bits_nv12_as_i420};
 use crate::sys::{
-    VdpBitstreamBuffer, VdpPictureInfoMPEG1Or2, VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420,
-    VDP_DECODER_PROFILE_MPEG2_MAIN, VDP_INVALID_HANDLE,
+    VDP_BITSTREAM_BUFFER_VERSION, VDP_CHROMA_TYPE_420, VDP_DECODER_PROFILE_MPEG2_MAIN,
+    VDP_INVALID_HANDLE, VdpBitstreamBuffer, VdpPictureInfoMPEG1Or2,
 };
 
 // ─────────────────────────── Default quantizer matrices ─────────────────────
