@@ -97,7 +97,7 @@ impl Display {
         let vt = sys::vtable().map_err(VdpError::other)?;
         let cstr = CString::new(name)
             .map_err(|e| VdpError::other(format!("display name has interior NUL: {e}")))?;
-        let raw = unsafe { (vt.x_open_display)(cstr.as_ptr() as *const u8) };
+        let raw = unsafe { vt.x11.x_open_display(cstr.as_ptr() as *const u8) };
         if raw.is_null() {
             return Err(VdpError::other(format!(
                 "XOpenDisplay({name:?}) returned NULL — is the X server reachable?"
@@ -118,7 +118,7 @@ impl Display {
         // `open` which already required it, and self.raw is a valid
         // Display* until Drop runs.
         let vt = sys::vtable().expect("vtable already loaded");
-        unsafe { (vt.x_default_screen)(self.raw) }
+        unsafe { vt.x11.x_default_screen(self.raw) }
     }
 
     /// Create a `VdpDevice` from this X display.
@@ -137,7 +137,8 @@ impl Display {
         // XOpenDisplay; `device` and the get_proc slot are stack
         // locations the callee writes to; no further aliasing.
         let status = unsafe {
-            (vt.vdp_device_create_x11)(self.raw, screen, &mut device, get_proc.as_mut_ptr())
+            vt.vdpau
+                .vdp_device_create_x11(self.raw, screen, &mut device, get_proc.as_mut_ptr())
         };
         if status != VDP_STATUS_OK {
             return Err(VdpError::vdp(status, "vdp_device_create_x11"));
@@ -171,7 +172,7 @@ impl Drop for Display {
             // SAFETY: self.raw was allocated by XOpenDisplay; we own
             // it and have not handed out aliasing pointers.
             unsafe {
-                (vt.x_close_display)(self.raw);
+                vt.x11.x_close_display(self.raw);
             }
         }
     }

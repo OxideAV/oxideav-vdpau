@@ -27,7 +27,7 @@
 //! freely under the workspace's clean-room policy — they're the
 //! equivalent of `<stdio.h>`.
 
-use libloading::Library;
+use dlsym::{Bindings, Library};
 use std::ffi::c_void;
 use std::sync::OnceLock;
 
@@ -564,23 +564,64 @@ pub type FnXDefaultScreen = unsafe extern "C" fn(display: *mut XDisplay) -> i32;
 
 // ─────────────────────────── Vtables ─────────────────────────────────────────
 
-/// Resolved function pointers for the bootstrap VDPAU symbol set
-/// (currently exactly one symbol — `vdp_device_create_x11`) plus the
-/// libX11 entry points needed to obtain a `Display*`.
+dlsym::library! {
+    /// The bootstrap symbol set of `libvdpau.so.1` — exactly one
+    /// symbol, [`FnVdpDeviceCreateX11`]. Everything else VDPAU offers
+    /// is reached through the `VdpGetProcAddress` pointer it writes
+    /// back (see `device.rs`), not through the dynamic linker.
+    ///
+    /// Owns the `Library` handle, so the resolved address can never
+    /// outlive the mapping.
+    pub struct LibVdpau {
+        unsafe extern "C" {
+            /// `vdp_device_create_x11(display, screen, device_out,
+            /// get_proc_address_out)`. Callers are responsible for the
+            /// FFI invariants (live `XDisplay*`, writable out slots,
+            /// `VdpStatus` checking).
+            pub fn vdp_device_create_x11(
+                display: *mut c_void,
+                screen: i32,
+                device: *mut VdpDevice,
+                get_proc_address: *mut VdpGetProcAddress,
+            ) -> VdpStatus;
+        }
+    }
+}
+
+dlsym::library! {
+    /// The three libX11 entry points needed to obtain (and release) a
+    /// `Display*` for `vdp_device_create_x11`. Method names are the
+    /// crate's snake_case spellings; `#[link_name]` carries the real
+    /// Xlib symbol.
+    pub struct LibX11 {
+        unsafe extern "C" {
+            /// `XOpenDisplay(display_name)` — see [`FnXOpenDisplay`].
+            #[link_name = "XOpenDisplay"]
+            pub fn x_open_display(display_name: *const u8) -> *mut XDisplay;
+            /// `XCloseDisplay(display)` — see [`FnXCloseDisplay`].
+            #[link_name = "XCloseDisplay"]
+            pub fn x_close_display(display: *mut XDisplay) -> i32;
+            /// `XDefaultScreen(display)` — see [`FnXDefaultScreen`].
+            #[link_name = "XDefaultScreen"]
+            pub fn x_default_screen(display: *mut XDisplay) -> i32;
+        }
+    }
+}
+
+/// Resolved bootstrap VDPAU symbol set (currently exactly one symbol —
+/// `vdp_device_create_x11`) plus the libX11 entry points needed to
+/// obtain a `Display*`.
 ///
-/// All fields are `unsafe extern "C" fn(...)` pointer types — callers
+/// Every method on the two bindings is `unsafe extern "C"` — callers
 /// are responsible for the FFI invariants (correct argument types,
-/// device lifetime, `VdpStatus` checking).
+/// device lifetime, `VdpStatus` checking). The bindings own their
+/// `Library` handles, keeping both mappings alive for as long as the
+/// vtable is.
 pub struct Vtable {
-    // VDPAU bootstrap
-    pub vdp_device_create_x11: FnVdpDeviceCreateX11,
-    // X11
-    pub x_open_display: FnXOpenDisplay,
-    pub x_close_display: FnXCloseDisplay,
-    pub x_default_screen: FnXDefaultScreen,
-    // Keep libraries alive
-    _libvdpau: Library,
-    _libx11: Library,
+    /// VDPAU bootstrap.
+    pub vdpau: LibVdpau,
+    /// X11 connection management.
+    pub x11: LibX11,
 }
 
 /// Smoke-test wrapper used by tests + by the pre-flight load check
@@ -616,39 +657,29 @@ pub fn framework() -> Result<&'static FrameworkSmoke, &'static str> {
 
 fn load_smoke() -> Result<FrameworkSmoke, String> {
     Ok(FrameworkSmoke {
-        libvdpau: open("libvdpau.so.1")?,
-        libx11: open("libX11.so.6")?,
+        libvdpau: open(LIBVDPAU)?,
+        libx11: open(LIBX11)?,
     })
 }
 
+/// Soname of the VDPAU dispatch library.
+const LIBVDPAU: &str = "libvdpau.so.1";
+/// Soname of Xlib.
+const LIBX11: &str = "libX11.so.6";
+
 fn load_vtable() -> Result<Vtable, String> {
-    let libvdpau = open("libvdpau.so.1")?;
-    let libx11 = open("libX11.so.6")?;
-
-    macro_rules! sym {
-        ($lib:expr, $name:expr, $ty:ty) => {{
-            let s: libloading::Symbol<$ty> = unsafe {
-                $lib.get(concat!($name, "\0").as_bytes())
-                    .map_err(|e| format!("dlsym {}: {}", $name, e))?
-            };
-            *s
-        }};
-    }
-
-    Ok(Vtable {
-        vdp_device_create_x11: sym!(libvdpau, "vdp_device_create_x11", FnVdpDeviceCreateX11),
-        x_open_display: sym!(libx11, "XOpenDisplay", FnXOpenDisplay),
-        x_close_display: sym!(libx11, "XCloseDisplay", FnXCloseDisplay),
-        x_default_screen: sym!(libx11, "XDefaultScreen", FnXDefaultScreen),
-        _libvdpau: libvdpau,
-        _libx11: libx11,
-    })
+    // `Bindings::load` resolves every declared symbol up front and
+    // fails (with the symbol's name) if one is missing; the signatures
+    // are asserted by the `unsafe extern` blocks above.
+    let vdpau = LibVdpau::load(open(LIBVDPAU)?).map_err(|e| format!("{LIBVDPAU}: {e}"))?;
+    let x11 = LibX11::load(open(LIBX11)?).map_err(|e| format!("{LIBX11}: {e}"))?;
+    Ok(Vtable { vdpau, x11 })
 }
 
 fn open(path: &str) -> Result<Library, String> {
     // SAFETY: dlopen on a soname with no init callbacks; equivalent to
     // a normal program startup load.
-    unsafe { Library::new(path) }.map_err(|e| format!("dlopen {path}: {e}"))
+    unsafe { Library::open(path) }.map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -768,17 +799,14 @@ mod tests {
                 return;
             }
         };
-        // Confirm the bootstrap entry point is present.
-        let _: libloading::Symbol<unsafe extern "C" fn()> = unsafe {
-            fw.libvdpau
-                .get(b"vdp_device_create_x11\0")
-                .expect("vdp_device_create_x11 symbol")
-        };
-        let _: libloading::Symbol<unsafe extern "C" fn()> = unsafe {
-            fw.libx11
-                .get(b"XOpenDisplay\0")
-                .expect("XOpenDisplay symbol")
-        };
+        // Confirm the bootstrap entry point is present. The signature
+        // is irrelevant here — the symbol is only looked up, never
+        // called.
+        let _: dlsym::Symbol<'_, unsafe extern "C" fn()> =
+            unsafe { fw.libvdpau.get(c"vdp_device_create_x11") }
+                .expect("vdp_device_create_x11 symbol");
+        let _: dlsym::Symbol<'_, unsafe extern "C" fn()> =
+            unsafe { fw.libx11.get(c"XOpenDisplay") }.expect("XOpenDisplay symbol");
     }
 
     /// Verify the vtable resolves all symbols. Skip-friendly when the

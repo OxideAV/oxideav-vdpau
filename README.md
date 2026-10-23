@@ -8,7 +8,7 @@ Linux VDPAU hardware decode bridge for the [oxideav](https://github.com/OxideAV/
 
 [VDPAU](https://www.freedesktop.org/wiki/Software/VDPAU/) (Video Decode and Presentation API for Unix) is the long-standing NVIDIA-driven HW decode interface on Linux. It pre-dates VA-API and is still the path of least resistance on legacy NVIDIA driver stacks where the proprietary driver does not ship a VA-API shim. AMD/Mesa also ships a VDPAU front-end (driver names: `vdpau-mesa-pcie`, etc.).
 
-This crate is a **thin runtime-loaded bridge** — no compile-time link dependency on `libvdpau`. The library is opened via [`libloading`] on first use.
+This crate is a **thin runtime-loaded bridge** — no compile-time link dependency on `libvdpau`. The library is opened via [`dlsym`](https://crates.io/crates/dlsym) on first use.
 
 ## Programming model
 

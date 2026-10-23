@@ -3,7 +3,7 @@
 //!
 //! This crate is a **runtime-loaded** bridge to the
 //! [VDPAU](https://www.freedesktop.org/wiki/Software/VDPAU/) library.
-//! It uses [`libloading`] to `dlopen` `libvdpau.so.1` (and `libX11.so.6`
+//! It uses [`dlsym`] to `dlopen` `libvdpau.so.1` (and `libX11.so.6`
 //! for the `XOpenDisplay` connection VDPAU's bootstrap requires) on
 //! first use, so:
 //!

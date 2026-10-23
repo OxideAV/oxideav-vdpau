@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - edition 2024, MSRV 1.95.
+- Loader: `libloading` replaced by `dlsym` (`dlsym::library!` bindings
+  for `vdp_device_create_x11` and the three libX11 entry points;
+  `sys::Vtable` now exposes them as `vt.vdpau.*` / `vt.x11.*` methods
+  instead of raw fn-pointer fields). `sys` is `#[doc(hidden)]`; the
+  public `device` / codec surface is unchanged.
 
 ### Added — Round 9
 

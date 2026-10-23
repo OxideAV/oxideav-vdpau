@@ -7,7 +7,7 @@ license = "MIT"
 repository = "https://github.com/OxideAV/oxideav-vdpau"
 homepage = "https://github.com/OxideAV/oxideav-vdpau"
 authors = ["Mark Karpeles"]
-description = "Linux VDPAU hardware decode bridge for the oxideav framework — runtime-loaded via libloading, no compile-time libvdpau dep"
+description = "Linux VDPAU hardware decode bridge for the oxideav framework — runtime-loaded via dlsym, no compile-time libvdpau dep"
 readme = "README.md"
 keywords = ["vdpau", "linux", "hardware", "video", "oxideav"]
 categories = ["multimedia::encoding", "multimedia::video", "hardware-support"]
@@ -18,11 +18,11 @@ categories = ["multimedia::encoding", "multimedia::video", "hardware-support"]
 # `default-features = false` and avoid the framework dependency tree.
 oxideav-core = { version = "0.1", optional = true }
 
-# libloading is only pulled on Linux targets — every non-linux build
-# ships a stub `register()` that's a no-op (the entire crate body is
-# `#![cfg(target_os = "linux")]`).
+# dlsym (runtime dlopen/dlsym bindings) is only pulled on Linux
+# targets — every non-linux build ships a stub `register()` that's a
+# no-op (the entire crate body is `#![cfg(target_os = "linux")]`).
 [target.'cfg(target_os = "linux")'.dependencies]
-libloading = "0.8"
+dlsym = "0.0.2"
 # Shared minimal IDR/keyframe header parser — H.264 / HEVC / AV1.
 # The vdpau bridge feeds parsed SPS/PPS/slice fields into
 # `VdpPictureInfoH264` / `VdpPictureInfoHEVC`. Standalone-publishable
