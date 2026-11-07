@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3](https://github.com/OxideAV/oxideav-vdpau/compare/v0.0.2...v0.0.3) - 2026-11-07
+
+### Other
+
+- API hygiene: non_exhaustive Profile, VdpError, DecoderCaps, DecodedFrame
+- untrack Cargo.lock, add .gitignore (library crate; release-plz owns the resolution)
+- dlsym instead of libloading
+- edition 2024, MSRV 1.95
+- README: oxideav-meta (not the oxideav facade) gates registration
+- README examples use the current registry API
+- hide internal pub surface from rustdoc/semver (fleet rule 2026-09-01)
+- add CI / crates.io / docs.rs / MIT-license badges
+- refresh to current status, drop per-round changelog cruft
+- round 9: typed Profile enum + engine.rs CODEC_QUERIES refactor
+- round 8: register four CodecInfo entries (h264/hevc/vp9/mpeg2video) with vdpau engine probe
+
 ### Changed
 
 - `#[non_exhaustive]` on the `Profile` enum and on the `VdpError`, `DecoderCaps` and `DecodedFrame` records (all produced by the bridge, never built by callers).
