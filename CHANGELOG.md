@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `#[non_exhaustive]` on the `Profile` enum and on the `VdpError`, `DecoderCaps` and `DecodedFrame` records (all produced by the bridge, never built by callers).
 - edition 2024, MSRV 1.95.
 - Loader: `libloading` replaced by `dlsym` (`dlsym::library!` bindings
   for `vdp_device_create_x11` and the three libX11 entry points;

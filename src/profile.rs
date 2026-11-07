@@ -36,6 +36,7 @@ use crate::sys::VdpDecoderProfile;
 /// New profile families added to `sys.rs` should grow a matching variant
 /// here so the typed surface stays exhaustive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Profile {
     Mpeg2Simple,
     Mpeg2Main,

@@ -43,6 +43,7 @@ impl From<BitstreamError> for VdpError {
 
 /// Decoded I420 frame extracted from a `VdpVideoSurface`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct DecodedFrame {
     pub width: u32,
     pub height: u32,

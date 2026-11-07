@@ -38,6 +38,7 @@ use crate::sys::{
 /// Error type for the VDPAU bridge. Wraps a `VdpStatus` code and a
 /// human-readable message describing where the failure occurred.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct VdpError {
     /// The VDPAU status code, or 0 when the failure happened before
     /// VDPAU was reached (X11 connect, dlsym, …).
@@ -478,6 +479,7 @@ impl Drop for VdpDevice {
 /// Decoder capability query result, mirroring the five out-parameters
 /// of `VdpDecoderQueryCapabilities`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct DecoderCaps {
     /// Whether the queried profile is supported on this device.
     pub supported: bool,
